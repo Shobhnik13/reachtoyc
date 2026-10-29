@@ -10,7 +10,7 @@ const runModel = require('app/models/run');
 
 const status = require('app/configs/status');
 
-const RANK = {valid: 0, unknown: 1, site: 2, guess: 3, none: 4};
+const RANK = {manual: -1, valid: 0, unknown: 1, site: 2, guess: 3, none: 4};
 const PARTS = ['all', 'body', 'subject'];
 
 async function getDrafts(params) {
@@ -143,8 +143,12 @@ async function generateDraft(params) {
   return draftModel.getDraft({draftId});
 }
 
-// Best address for a founder: verified > unverified (Apify) > on the company site > pattern guess
+// Best address for a founder: entered by the user > verified > unverified (Apify) > on the company site > pattern guess
 function bestEmail(f) {
+  if (f.manual_email) {
+    return {email: f.manual_email, kind: 'manual'};
+  }
+
   if (f.apify_email) {
     return {email: f.apify_email, kind: f.apify_status === 'valid' ? 'valid' : 'unknown'};
   }
@@ -193,21 +197,22 @@ function buildSystem(profile) {
 }
 
 function buildPrompt(company, recipient, options = {}) {
-  let jobs = (company.jobs || []).map((j) => `- ${j.title}${j.url ? ` (${j.url})` : ''}`).join('\n') || 'None listed on YC.';
+  let fromYc = !company.slug.startsWith('url-');
+  let jobs = (company.jobs || []).map((j) => `- ${j.title}${j.url ? ` (${j.url})` : ''}`).join('\n') || (fromYc ? 'None listed on YC.' : 'None found.');
   let lines = [
     `Write a cold email from the candidate to ${recipient ? `${recipient.name}${recipient.title ? `, ${recipient.title}` : ''}` : 'the founders'} at ${company.name}.`,
     '',
     '<company>',
     `Name: ${company.name}`,
-    `YC batch: ${company.batch}`,
+    fromYc ? `YC batch: ${company.batch}` : null,
     `One-liner: ${company.one_liner || 'n/a'}`,
     `Industry: ${company.industry || 'n/a'}`,
     `Website: ${company.website || 'n/a'}`,
     `Team size: ${company.team_size ?? 'n/a'}`,
-    `YC page: https://www.ycombinator.com/companies/${company.slug}`,
+    fromYc ? `YC page: https://www.ycombinator.com/companies/${company.slug}` : null,
     company.linkedin ? `LinkedIn: ${company.linkedin}` : null,
     company.twitter ? `X: ${company.twitter}` : null,
-    'Open roles on YC:',
+    fromYc ? 'Open roles on YC:' : 'Open roles:',
     jobs,
     '</company>',
     '',

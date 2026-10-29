@@ -24,7 +24,8 @@ async function createFounders(params) {
     linkedin: f.linkedin || '',
     twitter: f.twitter || '',
     emails_found: f.emailsFound || [],
-    email_guesses: f.emailGuesses || []
+    email_guesses: f.emailGuesses || [],
+    manual_email: f.manualEmail || null
   }));
 
   await database.db().insert(founders).values(_insert);

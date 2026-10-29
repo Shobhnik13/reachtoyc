@@ -16,6 +16,7 @@ async function createRun(params) {
   let _insert = {
     profile_id: params.profileId,
     batch: params.batch,
+    source: params.source || 'yc',
     company_limit: params.companyLimit,
     hiring_only: !!params.hiringOnly,
     skip_contacted: !!params.skipContacted,
@@ -89,6 +90,7 @@ function _select() {
       profile_id: runs.profile_id,
       profile_name: profiles.name,
       batch: runs.batch,
+      source: runs.source,
       status: runs.status,
       company_limit: runs.company_limit,
       hiring_only: runs.hiring_only,

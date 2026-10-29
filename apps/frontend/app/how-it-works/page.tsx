@@ -52,6 +52,7 @@ const STEPS: {title: string; body: string}[] = [
   {title: 'Find founders', body: "Opens each company's YC page for founder names, titles, LinkedIn/X and open roles, until it has as many companies as you asked for. \"Only companies hiring\" skips those with no open roles."},
   {title: 'Find emails', body: 'Checks the company website for published addresses, builds pattern guesses (first@, first.last@, ...) and, if Apify is on, looks up verified emails 50 founders at a time, capped at your USD limit per lookup.'},
   {title: 'Research and write', body: 'For each company, one AI call: the model searches the web for what the company builds and recent news, picks one real detail as the hook, and writes the email from your system prompt and profile Markdown. Sources are saved with the draft.'},
+  {title: 'Other companies', body: 'Run for a different company (on the Runs page) does the same for any website: the AI researches the company and its founders, emails are checked with Apify, and one email is written. You can also enter the email yourself. Needs your AI key and APIFY_TOKEN.'},
   {title: 'Review', body: 'Edit the recipient, subject or body, regenerate, write to another founder, copy, open in your mail app, mark sent, or export CSV.'}
 ];
 
@@ -115,7 +116,7 @@ export default function HowItWorksPage() {
         ) : null}
       </section>
 
-      <section className="panel">
+      <section className="panel" id="setup">
         <h2>Getting started</h2>
         <ol style={{margin: 0, paddingLeft: 20}}>
           <li>Fill in <code>apps/backend/.env</code> with the keys above, then run <code>npm run dev</code> in <code>v2/</code>.</li>

@@ -53,6 +53,19 @@ test.describe('2. Runs, companies and drafts', () => {
     assert.equal((await call(`${base}/runs`, {method: 'POST', body: {...data.run, profile_id: 2}})).code, 'profile_incomplete');
   });
 
+  test(`${++seq}. POST /runs for a company URL validates the site and the email`, async () => {
+    assert.equal((await call(`${base}/runs`, {method: 'POST', body: {profile_id: 1, source: 'url'}})).code, 'input_missing');
+    assert.equal((await call(`${base}/runs`, {method: 'POST', body: {profile_id: 1, source: 'url', website: 'http://localhost:4100'}})).code, 'url_invalid');
+    assert.equal((await call(`${base}/runs`, {method: 'POST', body: {profile_id: 1, source: 'url', website: '8.8.8.8', email: 'not-an-email'}})).code, 'input_invalid');
+  });
+
+  test(`${++seq}. POST /runs for a company URL needs the AI key and APIFY_TOKEN`, async () => {
+    let gemini = (await call(`${base}/profiles`, {method: 'POST', body: {name: 'Gemini', ai_provider: 'gemini', resume_markdown: '# Me'}})).data.profile.id;
+    let res = await call(`${base}/runs`, {method: 'POST', body: {profile_id: gemini, source: 'url', website: '8.8.8.8'}});
+    assert.equal(res.code, 'keys_missing');
+    await call(`${base}/profiles/${gemini}`, {method: 'PUT', body: {active: 0}});
+  });
+
   test(`${++seq}. POST /runs snapshots the profile and queues`, async () => {
     let res = await call(`${base}/runs`, {method: 'POST', body: data.run});
     let r = res.data.run;
@@ -204,5 +217,20 @@ test.describe('2. Runs, companies and drafts', () => {
     assert.equal((await call(`${base}/drafts/1`)).data.draft.status, 'generated');
     await draftModel.updateDraft({draftId: otherDraft, status: 'generated'});
     await call(`${base}/runs/1`, {method: 'PUT', body: {status: 'canceled'}});
+  });
+  test(`${++seq}. POST /runs for a company URL creates a one-company run with the entered contact`, async () => {
+    let res = await call(`${base}/runs`, {method: 'POST', body: {profile_id: 1, source: 'url', website: 'https://8.8.8.8/pricing', email: 'Ada@Acme.com', contact_name: 'Ada Lovelace'}});
+    let r = res.data.run;
+    assert.equal(res.code, 'success');
+    assert.equal(r.source, 'url');
+    assert.equal(r.batch, '8.8.8.8');
+    assert.equal(r.company_limit, 1);
+    assert.equal(r.use_apify, true);
+    let companies = (await call(`${base}/companies?run_id=${r.id}&statuses=pending`)).data.companies;
+    assert.equal(companies.length, 1);
+    assert.equal(companies[0].website, 'https://8.8.8.8');
+    assert.equal(companies[0].founders[0].name, 'Ada Lovelace');
+    assert.equal(companies[0].founders[0].manual_email, 'ada@acme.com');
+    await call(`${base}/runs/${r.id}`, {method: 'PUT', body: {status: 'canceled'}});
   });
 });

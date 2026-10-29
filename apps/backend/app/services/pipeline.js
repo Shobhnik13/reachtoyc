@@ -3,6 +3,7 @@
 const apifyService = require('app/services/apify');
 const draftService = require('app/services/draft');
 const profileService = require('app/services/profile');
+const researchService = require('app/services/research');
 const utilsService = require('app/services/utils');
 const wrapperService = require('app/services/wrapper');
 const ycService = require('app/services/yc');
@@ -134,6 +135,10 @@ async function _scrape(run) {
 }
 
 async function _scrapeCompany(run, company) {
+  if (run.source === 'url') {
+    return _researchCompany(run, company);
+  }
+
   try {
     let details = await ycService.getCompany(company.slug);
 
@@ -158,6 +163,46 @@ async function _scrapeCompany(run, company) {
   }
 }
 
+// Non-YC company: facts and founders come from the AI's web research instead of a YC page, then the usual site emails and guesses
+async function _researchCompany(run, company) {
+  try {
+    let profile = await profileService.getProfileKeys({profileId: run.profile_id});
+    let facts = await researchService.researchCompany({provider: profile.ai_provider, model: profile.ai_model, apiKey: profile.ai_key, website: company.website});
+    let [siteEmails, resolves] = await Promise.all([ycService.getSiteEmails(company.website, company.domain), ycService.resolves(company.domain)]);
+    let manual = await founderModel.getFounders({companyIds: [company.id]});
+    let known = new Set(manual.map((f) => f.name.toLowerCase()));
+
+    let founders = facts.founders
+      .filter((f) => !known.has(f.name.toLowerCase()))
+      .map((f) => {
+        let first = ycService.asciiName(f.name)[0] || '';
+        return {...f, emailsFound: siteEmails.filter((e) => first && e.split('@')[0].startsWith(first)), emailGuesses: resolves ? ycService.guesses(f.name, company.domain) : []};
+      });
+
+    // No named people found: a published address on the site is still someone to write to
+    if (!founders.length && !manual.length && siteEmails.length) {
+      founders.push({name: facts.name || company.domain, title: 'Team', emailsFound: siteEmails, emailGuesses: []});
+    }
+
+    await founderModel.createFounders({companyId: company.id, founders});
+    await companyModel.updateCompany({
+      companyId: company.id,
+      name: facts.name || company.domain,
+      oneLiner: facts.oneLiner,
+      industry: facts.industry,
+      teamSize: facts.teamSize,
+      linkedin: facts.linkedin,
+      twitter: facts.twitter,
+      siteEmails,
+      jobs: facts.jobs,
+      status: 'scraped',
+      error: null
+    });
+  } catch (e) {
+    await companyModel.updateCompany({companyId: company.id, status: 'failed', error: `Research failed: ${e.detail || _reason(e)}`});
+  }
+}
+
 async function _enrich(run) {
   let profile = await profileService.getProfileKeys({profileId: run.profile_id});
 
@@ -167,7 +212,8 @@ async function _enrich(run) {
 
   let qualified = await companyModel.getCompanies({runId: run.id, statuses: ['scraped']});
   let domains = new Map(qualified.map((c) => [c.id, c.domain]));
-  let people = (await founderModel.getFounders({companyIds: qualified.map((c) => c.id), apifyChecked: false})).filter((f) => domains.get(f.company_id));
+  // An address the user typed in needs no lookup
+  let people = (await founderModel.getFounders({companyIds: qualified.map((c) => c.id), apifyChecked: false})).filter((f) => domains.get(f.company_id) && !f.manual_email);
 
   for (let group of utilsService.chunk(people, config.PIPELINE.APIFY_CHUNK)) {
     if (await _stopped(run.id)) {

@@ -272,4 +272,9 @@ function _withDeadline(promise, ms, fallback) {
   return Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve(fallback), ms).unref())]);
 }
 
-module.exports = {getBatches, getCompanies, getCompany, isBatch, domainOf, asciiName, guesses, openJobs};
+// Emails published on a company's own site, within a time limit; used for non-YC companies too
+function getSiteEmails(website, domain) {
+  return domain ? _withDeadline(_siteEmails(website, domain), SITE_DEADLINE_MS, []) : Promise.resolve([]);
+}
+
+module.exports = {getBatches, getCompanies, getCompany, isBatch, domainOf, asciiName, guesses, openJobs, getSiteEmails, resolves: _resolves};

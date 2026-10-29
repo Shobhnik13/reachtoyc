@@ -5,6 +5,19 @@ const wrapperService = require('app/services/wrapper');
 
 // eslint-disable-next-line no-unused-vars
 async function createRun(req, res, next) {
+  if (req.body.source === 'url') {
+    if (!req.body.profile_id || !req.body.website) {
+      throw new Error('input_missing');
+    }
+
+    let urlParams = {profileId: parseInt(req.body.profile_id), source: 'url', website: String(req.body.website).trim().slice(0, 300)};
+    req.body.email ? (urlParams.email = String(req.body.email).trim().toLowerCase().slice(0, 200)) : null;
+    req.body.contact_name ? (urlParams.contactName = String(req.body.contact_name).trim().slice(0, 120)) : null;
+
+    let urlResult = await runService.createRun(urlParams);
+    return res.json(urlResult);
+  }
+
   if (!req.body.profile_id || !req.body.batch || !req.body.company_limit) {
     throw new Error('input_missing');
   }

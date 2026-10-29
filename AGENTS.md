@@ -94,7 +94,7 @@ For Neon URLs, replace `sslmode=require` with `sslmode=verify-full` (same securi
      -d '{"profile_id": 1, "batch": "Fall 2026", "company_limit": 20, "hiring_only": false}'
    ```
    One AI call with web search per company, plus Apify lookups if `APIFY_TOKEN` is set.
-8. **Review.** The user opens http://localhost:3000 → the run. Drafts can be edited, regenerated, switched to another
+8. **Review.** The user opens http://localhost:3000/runs → the run. Drafts can be edited, regenerated, switched to another
    founder, copied, opened in a mail app and marked sent.
 
 ## How to use it day to day
@@ -102,6 +102,10 @@ For Neon URLs, replace `sslmode=require` with `sslmode=verify-full` (same securi
 - **New run:** always starts from the top of the batch, newest launched companies first.
 - **Draft more:** in the Runs list, **+ Draft more** next to a run adds the next N new companies of that batch to the
   same run (50 + 20 = 70), never repeating one. API: `PUT /runs/:id {"status": "queued", "add_companies": 20}`.
+- **Run for a different company** (Runs page, or `POST /runs {"source": "url", "profile_id": 1, "website": "https://acme.com", "email": "optional", "contact_name": "optional"}`):
+  same workflow for one non-YC company. The AI researches it, emails are found and checked with Apify, and one email is
+  written. Needs the AI key and `APIFY_TOKEN` (`keys_missing` otherwise). If no email is found the draft is still
+  written and the user types the address. About 2 AI calls; ask the user first.
 - **Regenerate all** at the top of a run rewrites every unsent draft (one AI call each; ask the user first). API:
   `PUT /runs/:id {"status": "queued", "regenerate": true}`.
 - **Regenerate** on a draft: email body only, subject only, or everything, with optional 1-2 lines of extra context.

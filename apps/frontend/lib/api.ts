@@ -21,6 +21,7 @@ export interface Run {
   profile_id: number;
   profile_name: string;
   batch: string;
+  source: 'yc' | 'url';
   status: RunStatus;
   company_limit: number;
   hiring_only: boolean;
@@ -48,6 +49,7 @@ export interface Founder {
   twitter: string;
   emails_found: string[];
   email_guesses: string[];
+  manual_email: string | null;
   apify_checked: boolean;
   apify_email: string | null;
   apify_status: string | null;
@@ -94,9 +96,9 @@ export interface Company {
   draft: Draft | null;
 }
 
-export type EmailKind = 'valid' | 'unknown' | 'site' | 'guess' | 'none';
+export type EmailKind = 'manual' | 'valid' | 'unknown' | 'site' | 'guess' | 'none';
 
-export const EMAIL_LABEL: Record<EmailKind, string> = {valid: 'verified', unknown: 'unverified', site: 'on site', guess: 'guess', none: 'no email'};
+export const EMAIL_LABEL: Record<EmailKind, string> = {manual: 'you entered', valid: 'verified', unknown: 'unverified', site: 'on site', guess: 'guess', none: 'no email'};
 
 export const ACTIVE: RunStatus[] = ['queued', 'scraping', 'enriching', 'drafting'];
 
@@ -141,6 +143,7 @@ export async function api<T>(path: string, init?: {method?: string; body?: unkno
 }
 
 export function bestEmail(f: Founder): {email: string; kind: EmailKind} {
+  if (f.manual_email) return {email: f.manual_email, kind: 'manual'};
   if (f.apify_email) return {email: f.apify_email, kind: f.apify_status === 'valid' ? 'valid' : 'unknown'};
   if (f.emails_found?.length) return {email: f.emails_found[0], kind: 'site'};
   if (f.email_guesses?.length) return {email: f.email_guesses[0], kind: 'guess'};

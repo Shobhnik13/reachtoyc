@@ -6,6 +6,7 @@ const aiProvider = pgEnum('ai_provider', ['anthropic', 'openai', 'gemini']);
 const runStatus = pgEnum('run_status', ['queued', 'scraping', 'enriching', 'drafting', 'completed', 'failed', 'canceled']);
 const companyStatus = pgEnum('company_status', ['pending', 'scraped', 'skipped', 'failed']);
 const draftStatus = pgEnum('draft_status', ['pending', 'generated', 'failed']);
+const runSource = pgEnum('run_source', ['yc', 'url']);
 
 const base = () => ({
   active: boolean('active').notNull().default(true),
@@ -34,6 +35,7 @@ const runs = pgTable(
       .notNull()
       .references(() => profiles.id),
     batch: text('batch').notNull(),
+    source: runSource('source').notNull().default('yc'),
     status: runStatus('status').notNull().default('queued'),
     company_limit: integer('company_limit').notNull(),
     hiring_only: boolean('hiring_only').notNull().default(false),
@@ -92,6 +94,7 @@ const founders = pgTable(
     twitter: text('twitter').notNull().default(''),
     emails_found: jsonb('emails_found').notNull().default([]),
     email_guesses: jsonb('email_guesses').notNull().default([]),
+    manual_email: text('manual_email'),
     apify_checked: boolean('apify_checked').notNull().default(false),
     apify_email: text('apify_email'),
     apify_status: text('apify_status'),
@@ -127,4 +130,4 @@ const drafts = pgTable(
   (t) => [uniqueIndex('idx_drafts_company_id').on(t.company_id), index('idx_drafts_run_id').on(t.run_id), index('idx_drafts_status').on(t.status)]
 );
 
-module.exports = {aiProvider, runStatus, companyStatus, draftStatus, profiles, runs, companies, founders, drafts};
+module.exports = {aiProvider, runStatus, companyStatus, draftStatus, runSource, profiles, runs, companies, founders, drafts};

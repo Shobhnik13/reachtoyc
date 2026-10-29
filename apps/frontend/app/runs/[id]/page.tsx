@@ -9,6 +9,8 @@ import {ACTIVE, api, bestEmail, EMAIL_LABEL, fmtDate, type Company, type Draft, 
 import {confirmToast, toast} from '@/lib/toast';
 
 const POLL_MS = 30000;
+// A one-company run finishes in a minute or two, so its steps refresh faster
+const SINGLE_POLL_MS = 4000;
 const PAGE = 10;
 const SHOW_STATUSES: Record<string, string> = {drafts: 'scraped', skipped: 'skipped,failed', all: 'scraped,skipped,failed'};
 
@@ -30,16 +32,18 @@ export default function RunPage() {
 
   const [acting, setActing] = useState<'canceled' | 'queued' | 'regenerate' | null>(null);
 
+  const single = run?.source === 'url';
+
   // Filters run on the server; the list holds the first `count` matches and grows as you scroll
   const listUrl = useCallback(
     (limit?: number) => {
-      const params = new URLSearchParams({run_id: id, statuses: SHOW_STATUSES[show]});
+      const params = new URLSearchParams({run_id: id, statuses: single ? 'pending,scraped,skipped,failed' : SHOW_STATUSES[show]});
       if (query) params.set('q', query);
       if (hideSent) params.set('sent', '0');
       if (limit) params.set('limit', String(limit));
       return `/companies?${params}`;
     },
-    [id, show, query, hideSent]
+    [id, show, query, hideSent, single]
   );
 
   const load = useCallback(async (silent = false) => {
@@ -104,7 +108,7 @@ export default function RunPage() {
 
   useEffect(() => {
     if (!busy) return;
-    const t = setInterval(() => load(true), POLL_MS);
+    const t = setInterval(() => load(true), single ? SINGLE_POLL_MS : POLL_MS);
     return () => clearInterval(t);
   }, [busy, load]);
 
@@ -177,6 +181,8 @@ export default function RunPage() {
 
   if (!run) return err ? <p className="status err">{err}</p> : <Loading label="Loading run" />;
 
+  if (run.source === 'url') return <SingleCompanyRun run={run} company={companies?.[0] || null} acting={acting} onStatus={setStatus} onDraft={onDraft} />;
+
   const s = run.stats;
   const drafted = s.drafts.generated + s.drafts.failed;
   const pct = run.status === 'completed' ? 100 : Math.min(100, Math.round(((s.companies.scraped / run.company_limit) * 0.4 + (drafted / run.company_limit) * 0.6) * 100));
@@ -242,6 +248,58 @@ export default function RunPage() {
       {companies && companies.length < total ? (
         <div ref={sentinel} className="loading">{loadingMore ? <><span className="spin" style={{width: 18, height: 18}} /> Loading more…</> : null}</div>
       ) : null}
+    </>
+  );
+}
+
+const STEPS: {key: string; label: (name: string) => string}[] = [
+  {key: 'research', label: (name) => `Researching ${name}: what it builds, founders, open roles`},
+  {key: 'emails', label: () => 'Finding and verifying emails'},
+  {key: 'write', label: () => 'Writing your email'}
+];
+
+// One company from a URL: a step list while it works, then just the draft card
+function SingleCompanyRun({run, company, acting, onStatus, onDraft}: {run: Run; company: Company | null; acting: string | null; onStatus: (s: 'canceled' | 'queued') => void; onDraft: (d: Draft) => void}) {
+  const active = ACTIVE.includes(run.status);
+  const draftStatus = company?.draft?.status;
+  const current = !active ? (run.status === 'completed' ? 3 : -1) : run.status === 'drafting' || draftStatus === 'pending' ? 2 : run.status === 'enriching' ? 1 : 0;
+  const failed = company?.status === 'failed' || draftStatus === 'failed' || run.status === 'failed';
+  const done = !active && company?.status === 'scraped' && draftStatus && draftStatus !== 'pending';
+  const name = company?.name || run.batch;
+
+  return (
+    <>
+      <div className="head">
+        <div>
+          <h1>{name}</h1>
+          <p className="sub" style={{marginBottom: 16}}>
+            {company?.website ? <a href={company.website} target="_blank" rel="noopener noreferrer">{run.batch}</a> : run.batch} · {run.profile_name} · {run.ai_model} · {fmtDate(run.started_at || run.created_at)}
+          </p>
+        </div>
+        <span className="row">
+          {active ? <button type="button" className="danger" disabled={!!acting} onClick={() => onStatus('canceled')}>{acting === 'canceled' ? <Spinner /> : null}Cancel</button> : null}
+          {!active && (failed || run.status === 'canceled') ? <button type="button" className="ai" disabled={!!acting} onClick={() => onStatus('queued')}>{acting === 'queued' ? <Spinner /> : null}Try again</button> : null}
+        </span>
+      </div>
+
+      {!done ? (
+        <section className="panel steps-panel">
+          {STEPS.map((step, i) => {
+            const state = current > i || (done && i < 3) ? 'done' : current === i ? 'now' : 'todo';
+            return (
+              <div key={step.key} className={`step-line ${state}`}>
+                <span className="step-icon">{state === 'done' ? '✓' : state === 'now' ? <Spinner size={14} /> : i + 1}</span>
+                <span>{step.label(name)}</span>
+              </div>
+            );
+          })}
+          {failed ? <p className="status err">{company?.error || company?.draft?.error || run.error || 'Something went wrong.'} Press Try again.</p> : null}
+          {run.status === 'canceled' && !failed ? <p className="status muted">Canceled. Press Try again to continue.</p> : null}
+          {run.error && !failed ? <p className="status muted">{run.error}</p> : null}
+        </section>
+      ) : null}
+
+      {done && company ? <DraftCard company={company} onChange={onDraft} defaultOpen /> : null}
     </>
   );
 }

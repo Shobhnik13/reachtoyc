@@ -65,7 +65,7 @@ You need Node 22 or newer, a Postgres database (or none, see `pglite` below) and
 5. **Start a run** at http://localhost:3000/runs/new: pick the profile, a YC batch, how many companies, and the
    options. Nothing starts (and nothing is billed) until you press **Start run** and confirm.
 
-6. **Review** on the run page: edit, regenerate, switch founder, copy or open in your mail app, and mark sent.
+6. **Review** on the run page (http://localhost:3000/runs): edit, regenerate, switch founder, copy or open in your mail app, and mark sent.
 
 ## How it works
 
@@ -111,6 +111,21 @@ With Apify on, most drafts get a `verified` or `unverified` address and only the
 Runs execute inside the backend process. A backend restart never restarts paid work by itself: unfinished runs and
 regenerations are marked interrupted, and you press **Resume** or **Regenerate**. A resumed run continues where it
 stopped and retries failed companies and drafts.
+
+### Any other company (not YC)
+
+**Run for a different company** on the Runs page takes a company website (plus, optionally, a contact name and their
+email) and runs the same workflow for that one company. It needs the AI key and `APIFY_TOKEN`.
+
+1. Your AI model researches the company with web search: name, what it builds, founders or CEO/CTO, LinkedIn, open
+   roles.
+2. Emails from the company site and pattern guesses, then Apify verification (skipped for an email you entered).
+3. One email written with your profile, system prompt and subject template.
+
+An email you entered is used as is and labelled `you entered`. If no email turns up, the email is still written and
+you type the address in **To**. The result is a normal one-company run with the same buttons (regenerate, copy, open
+in mail app, mark sent). Only public `http(s)` websites are accepted. API: `POST /runs` with
+`{"source": "url", "profile_id", "website", "email"?, "contact_name"?}`.
 
 ### Reviewing drafts
 

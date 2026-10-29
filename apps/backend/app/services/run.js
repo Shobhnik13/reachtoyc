@@ -3,16 +3,24 @@
 const pipelineService = require('app/services/pipeline');
 const profileService = require('app/services/profile');
 const wrapperService = require('app/services/wrapper');
+const webService = require('app/services/web');
 const ycService = require('app/services/yc');
 
 const companyModel = require('app/models/company');
 const draftModel = require('app/models/draft');
+const founderModel = require('app/models/founder');
 const runModel = require('app/models/run');
 
 const config = require('app/configs/config');
 const status = require('app/configs/status');
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 async function createRun(params) {
+  if (params.source === 'url') {
+    return _createUrlRun(params);
+  }
+
   if (!params.profileId || !params.batch || !params.companyLimit) {
     throw new Error('input_missing');
   }
@@ -108,6 +116,55 @@ async function updateRun(params) {
   }
 
   return _respond(run.id);
+}
+
+// One company that isn't from YC: the AI researches it, then the same emails/Apify/drafting stages run
+async function _createUrlRun(params) {
+  if (!params.profileId || !params.website) {
+    throw new Error('input_missing');
+  }
+
+  if (params.email && !EMAIL_RE.test(params.email)) {
+    throw new Error('input_invalid');
+  }
+
+  let site = await webService.checkPublicUrl(params.website);
+  let profile = await profileService.getProfileKeys({profileId: params.profileId});
+
+  if (!profile.active) {
+    throw new Error('entity_missing');
+  }
+
+  if (!profile.ai_key || !profile.apify_token) {
+    throw new Error('keys_missing');
+  }
+
+  if (!profile.resume_markdown.trim()) {
+    throw new Error('profile_incomplete');
+  }
+
+  let runId = await runModel.createRun({
+    profileId: params.profileId,
+    source: 'url',
+    batch: site.domain,
+    companyLimit: 1,
+    useApify: true,
+    aiProvider: profile.ai_provider,
+    aiModel: profile.ai_model,
+    systemPrompt: profile.system_prompt,
+    resumeMarkdown: profile.resume_markdown
+  });
+
+  await companyModel.createCompanies({runId, companies: [{slug: `url-${site.domain}`, name: site.domain, batch: site.domain, website: site.website, domain: site.domain}]});
+
+  if (params.email) {
+    let company = (await companyModel.getCompanies({runId}))[0];
+    await founderModel.createFounders({companyId: company.id, founders: [{name: params.contactName || params.email.split('@')[0], title: 'Contact', manualEmail: params.email}]});
+  }
+
+  config.PIPELINE.AUTOSTART ? pipelineService.start(runId) : null;
+
+  return _respond(runId);
 }
 
 async function _respond(runId) {

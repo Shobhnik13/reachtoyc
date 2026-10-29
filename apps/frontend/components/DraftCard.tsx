@@ -21,7 +21,7 @@ function CopyButton({text, label, what, primary}: {text: string; label: string; 
   );
 }
 
-export default function DraftCard({company, serial, onChange}: {company: Company; serial: number; onChange: (d: Draft) => void}) {
+export default function DraftCard({company, serial, onChange, defaultOpen = false}: {company: Company; serial?: number; onChange: (d: Draft) => void; defaultOpen?: boolean}) {
   const draft = company.draft;
   const [subject, setSubject] = useState(draft?.subject || '');
   const [body, setBody] = useState(draft?.body || '');
@@ -86,9 +86,9 @@ export default function DraftCard({company, serial, onChange}: {company: Company
   const mailto = `mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   return (
-    <details className={`card ${draft?.sent ? 'sent' : ''}`}>
+    <details className={`card ${draft?.sent ? 'sent' : ''}`} open={defaultOpen || undefined}>
       <summary>
-        <span className="serial">{serial}.</span>
+        {serial ? <span className="serial">{serial}.</span> : null}
         <span className="name">{company.name}</span>
         <span className={`badge ${badge}`}>{label}</span>
         {draft?.sent ? <span className="badge valid">sent</span> : null}
@@ -103,7 +103,7 @@ export default function DraftCard({company, serial, onChange}: {company: Company
         <p className="r muted">
           {company.one_liner}
           {safeUrl(company.website) ? <> · <a href={safeUrl(company.website)} target="_blank" rel="noopener">website</a></> : null}
-          {' · '}<a href={`https://www.ycombinator.com/companies/${company.slug}`} target="_blank" rel="noopener">YC</a>
+          {company.slug.startsWith('url-') ? null : <>{' · '}<a href={`https://www.ycombinator.com/companies/${company.slug}`} target="_blank" rel="noopener">YC</a></>}
           {safeUrl(recipient?.linkedin) ? <> · <a href={safeUrl(recipient?.linkedin)} target="_blank" rel="noopener">LinkedIn</a></> : null}
           {safeUrl(recipient?.twitter) ? <> · <a href={safeUrl(recipient?.twitter)} target="_blank" rel="noopener">X</a></> : null}
         </p>
@@ -111,7 +111,7 @@ export default function DraftCard({company, serial, onChange}: {company: Company
           <p className="r"><b>Jobs</b>{company.jobs.map((j, i) => <span key={i}>{i ? ' · ' : ''}{safeUrl(j.url) ? <a href={safeUrl(j.url)} target="_blank" rel="noopener">{j.title}</a> : j.title}</span>)}</p>
         ) : null}
         <div className="r">
-          <b>Founders</b>
+          <b>{company.slug.startsWith('url-') ? 'People' : 'Founders'}</b>
           {company.founders.map((f) => {
             const e = bestEmail(f);
             const isTo = f.id === draft?.founder_id;
@@ -130,7 +130,8 @@ export default function DraftCard({company, serial, onChange}: {company: Company
         {generated ? (
           <>
             {draft.error ? <p className="status err">Last regenerate failed: {draft.error}. Your email is unchanged.</p> : null}
-            <label className="f" style={{marginTop: 12}}>To<input value={toEmail} onChange={(e) => setToEmail(e.target.value)} /></label>
+            <label className="f" style={{marginTop: 12}}>To<input value={toEmail} onChange={(e) => setToEmail(e.target.value)} placeholder="name@company.com" /></label>
+            {!draft.to_email ? <p className="hint">No email found for this company. Type the address in To and press Save edits.</p> : null}
             {recipient && recipient.email_guesses.length > 1 && kind === 'guess' ? <p className="hint">Other guesses: {recipient.email_guesses.slice(1).join(', ')}</p> : null}
             <label className="f" style={{marginTop: 10}}>Subject<input value={subject} onChange={(e) => setSubject(e.target.value)} /></label>
             <label className="f" style={{marginTop: 10}}>Body<textarea value={body} onChange={(e) => setBody(e.target.value)} style={{minHeight: 340}} /></label>

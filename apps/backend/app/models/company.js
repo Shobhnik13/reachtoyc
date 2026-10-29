@@ -24,6 +24,7 @@ async function createCompanies(params) {
     batch: c.batch,
     position: i,
     website: c.website || '',
+    domain: c.domain || '',
     one_liner: c.oneLiner || '',
     industry: c.industry || '',
     team_size: c.teamSize ?? null
@@ -100,6 +101,10 @@ async function updateCompany(params) {
   params.hasOwnProperty('linkedin') ? (_update.linkedin = params.linkedin) : null;
   params.hasOwnProperty('twitter') ? (_update.twitter = params.twitter) : null;
   params.siteEmails ? (_update.site_emails = params.siteEmails) : null;
+  params.name ? (_update.name = params.name) : null;
+  params.hasOwnProperty('oneLiner') ? (_update.one_liner = params.oneLiner) : null;
+  params.hasOwnProperty('industry') ? (_update.industry = params.industry) : null;
+  params.hasOwnProperty('teamSize') ? (_update.team_size = params.teamSize) : null;
   params.jobs ? ((_update.jobs = params.jobs), (_update.job_count = params.jobs.length)) : null;
 
   await database.db().update(companies).set(_update).where(eq(companies.id, params.companyId));

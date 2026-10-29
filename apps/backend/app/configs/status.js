@@ -8,6 +8,8 @@ const STATUSES = {
   input_invalid: {http: 400, message: 'Some fields have invalid values.'},
   entity_missing: {http: 404, message: 'The requested record does not exist.'},
   profile_incomplete: {http: 400, message: 'Add the provider key (and APIFY_TOKEN if verifying emails) to the backend .env, and a resume to the profile, before starting a run.'},
+  keys_missing: {http: 400, message: 'Set the AI key for this profile and APIFY_TOKEN in apps/backend/.env, then restart the backend.'},
+  url_invalid: {http: 400, message: 'Enter a public company website, like https://acme.com.'},
   run_edit_fail: {http: 409, message: 'The run cannot move to that status from its current status.'},
   draft_edit_fail: {http: 409, message: 'The draft is being generated. Try again when it finishes.'},
   yc_fail: {http: 502, message: "Couldn't reach YC's company directory."},
