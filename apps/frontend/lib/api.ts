@@ -1,0 +1,154 @@
+export type Provider = 'anthropic' | 'openai' | 'gemini';
+export type RunStatus = 'queued' | 'scraping' | 'enriching' | 'drafting' | 'completed' | 'failed' | 'canceled';
+
+export interface Profile {
+  id: number;
+  name: string;
+  ai_provider: Provider;
+  ai_model: string;
+  apify_max_usd: number;
+  resume_markdown: string;
+  system_prompt: string;
+  subject_template: string;
+  has_ai_key: boolean;
+  ai_key_env: string;
+  has_apify_token: boolean;
+  created_at: string;
+}
+
+export interface Run {
+  id: number;
+  profile_id: number;
+  profile_name: string;
+  batch: string;
+  status: RunStatus;
+  company_limit: number;
+  hiring_only: boolean;
+  skip_contacted: boolean;
+  use_apify: boolean;
+  ai_provider: Provider;
+  ai_model: string;
+  system_prompt: string;
+  resume_chars: number;
+  error: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  created_at: string;
+  stats: {
+    companies: {pending: number; scraped: number; skipped: number; failed: number};
+    drafts: {pending: number; generated: number; failed: number; sent: number};
+  };
+}
+
+export interface Founder {
+  id: number;
+  name: string;
+  title: string;
+  linkedin: string;
+  twitter: string;
+  emails_found: string[];
+  email_guesses: string[];
+  apify_checked: boolean;
+  apify_email: string | null;
+  apify_status: string | null;
+}
+
+export interface Draft {
+  id: number;
+  run_id: number;
+  company_id: number;
+  founder_id: number | null;
+  to_email: string;
+  email_kind: EmailKind;
+  subject: string;
+  body: string;
+  hook: string;
+  sources: {url: string; title: string}[];
+  model: string;
+  status: 'pending' | 'generated' | 'failed';
+  error: string | null;
+  sent: boolean;
+  sent_at: string | null;
+  company?: {name: string; slug: string; batch: string};
+}
+
+export interface Company {
+  id: number;
+  run_id: number;
+  slug: string;
+  name: string;
+  batch: string;
+  website: string;
+  domain: string;
+  one_liner: string;
+  industry: string;
+  team_size: number | null;
+  linkedin: string;
+  twitter: string;
+  site_emails: string[];
+  job_count: number | null;
+  jobs: {title: string; url: string}[];
+  status: 'pending' | 'scraped' | 'skipped' | 'failed';
+  error: string | null;
+  founders: Founder[];
+  draft: Draft | null;
+}
+
+export type EmailKind = 'valid' | 'unknown' | 'site' | 'guess' | 'none';
+
+export const EMAIL_LABEL: Record<EmailKind, string> = {valid: 'verified', unknown: 'unverified', site: 'on site', guess: 'guess', none: 'no email'};
+
+export const ACTIVE: RunStatus[] = ['queued', 'scraping', 'enriching', 'drafting'];
+
+export const DEFAULT_MODELS: Record<Provider, string> = {anthropic: 'claude-opus-5-5', openai: 'gpt-5.5', gemini: 'gemini-3.5-flash'};
+
+// In-flight request count drives the top loading bar; polling passes silent so the bar doesn't flash
+let inflight = 0;
+const listeners = new Set<(n: number) => void>();
+
+export function onLoading(fn: (n: number) => void) {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+
+function track(delta: number) {
+  inflight += delta;
+  listeners.forEach((fn) => fn(inflight));
+}
+
+export async function api<T>(path: string, init?: {method?: string; body?: unknown; silent?: boolean}): Promise<T> {
+  if (!init?.silent) track(1);
+
+  try {
+    const res = await fetch(`/api${path}`, {
+      method: init?.method || 'GET',
+      headers: init?.body ? {'Content-Type': 'application/json'} : undefined,
+      body: init?.body ? JSON.stringify(init.body) : undefined,
+      cache: 'no-store'
+    });
+    const json = await res.json().catch(() => ({error: true, message: `HTTP ${res.status}`}));
+
+    if (json.error) {
+      throw new Error(json.message || `HTTP ${res.status}`);
+    }
+
+    return json.data as T;
+  } finally {
+    if (!init?.silent) track(-1);
+  }
+}
+
+export function bestEmail(f: Founder): {email: string; kind: EmailKind} {
+  if (f.apify_email) return {email: f.apify_email, kind: f.apify_status === 'valid' ? 'valid' : 'unknown'};
+  if (f.emails_found?.length) return {email: f.emails_found[0], kind: 'site'};
+  if (f.email_guesses?.length) return {email: f.email_guesses[0], kind: 'guess'};
+  return {email: '', kind: 'none'};
+}
+
+export const safeUrl = (u?: string | null) => (u && /^https?:\/\//i.test(u) ? u : undefined);
+
+export function fmtDate(s: string | null) {
+  return s ? new Date(s).toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'}) : '';
+}

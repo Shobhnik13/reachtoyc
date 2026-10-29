@@ -1,0 +1,1 @@
+ALTER TABLE "profiles" ADD COLUMN "subject_template" text DEFAULT '' NOT NULL;
