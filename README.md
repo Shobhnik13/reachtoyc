@@ -9,6 +9,14 @@ apps/backend   Express + Drizzle ORM (Postgres or embedded PGlite) and the run p
 apps/frontend  Next.js app; proxies /api/* to the backend
 ```
 
+## Set up with an AI agent
+
+Using Claude Code, Codex or another coding agent? Point it at [`AGENTS.md`](AGENTS.md): it lists every value to ask
+you for, where you get each key, that they all go in `apps/backend/.env`, the setup and verification commands, and how
+to create your profile. Agents working in this repo read `AGENTS.md` / `CLAUDE.md` automatically, and the running app
+serves the same guide at http://localhost:3000/llms.txt and `/setup.md`. A ready-to-paste prompt is on the app's
+**How it works** page.
+
 ## Run it locally
 
 You need Node 22 or newer, a Postgres database (or none, see `pglite` below) and an API key for one AI provider.

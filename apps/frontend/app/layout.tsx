@@ -16,6 +16,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{__html: themeScript}} />
+        <link rel="alternate" type="text/markdown" href="/setup.md" title="reachtoyc setup guide for AI agents" />
       </head>
       <body>
         <Shell>{children}</Shell>

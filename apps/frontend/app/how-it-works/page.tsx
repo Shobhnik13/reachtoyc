@@ -5,6 +5,9 @@ import {useEffect, useState} from 'react';
 
 import {Spinner} from '@/components/Spinner';
 import {api} from '@/lib/api';
+import {toast} from '@/lib/toast';
+
+const AGENT_PROMPT = `Set up reachtoyc for me. Follow the agent guide at https://github.com/Shobhnik13/reachtoyc/blob/main/AGENTS.md (the same guide is served at http://localhost:3000/llms.txt once the app runs). Ask me for each key before you put it in apps/backend/.env, never commit that file, and ask me before starting any run, since runs spend my AI and Apify credits.`;
 
 interface Settings {
   database: 'pglite' | 'postgres';
@@ -68,13 +71,27 @@ export default function HowItWorksPage() {
       <p className="sub">Pick a YC batch, and a run finds the founders, their emails, researches each company and drafts one personalised email per company from your own profile.</p>
 
       <section className="panel">
+        <h2>Set up with an AI agent</h2>
+        <p className="hint" style={{marginTop: 0}}>
+          Using Claude Code, Codex or another coding agent? Paste this to it. The agent reads the guide, asks you for each key, writes them to <code>apps/backend/.env</code>, starts the app, checks it, and creates your profile.
+        </p>
+        <pre className="prompt">{AGENT_PROMPT}</pre>
+        <p className="row">
+          <button type="button" className="primary" onClick={() => navigator.clipboard.writeText(AGENT_PROMPT).then(() => toast.success('Prompt copied'), () => toast.error("Couldn't copy"))}>Copy prompt</button>
+          <a className="btn" href="/setup.md" target="_blank" rel="noopener">Agent guide (Markdown)</a>
+          <a className="btn" href="/llms.txt" target="_blank" rel="noopener">llms.txt</a>
+        </p>
+        <p className="hint">Agents in this repo also pick up <code>AGENTS.md</code> (Codex and others) and <code>CLAUDE.md</code> (Claude Code) automatically.</p>
+      </section>
+
+      <section className="panel">
         <h2>Keys you need</h2>
         <p className="hint" style={{marginTop: 0}}>
           All of these go in <code>apps/backend/.env</code> (gitignored; copy <code>apps/backend/.env.example</code>). Restart the backend after editing it. Keys stay on the backend: they are never stored in the database or sent to this page.
         </p>
         {err ? <p className="status err">Couldn&apos;t reach the backend: {err}</p> : null}
         <table style={{marginTop: 10}}>
-          <thead><tr><th>Variable</th><th>Status</th><th>Needed</th><th>What it&apos;s for</th><th>Where to get it</th></tr></thead>
+          <thead><tr><th>Variable</th><th>Status</th><th>Needed</th><th>What it&apos;s for</th><th>Where to get it</th><th>Goes in</th></tr></thead>
           <tbody>
             {KEYS.map((k) => {
               const set = settings?.keys[k.name];
@@ -85,6 +102,7 @@ export default function HowItWorksPage() {
                   <td>{k.need}</td>
                   <td>{k.what}</td>
                   <td>{k.where}</td>
+                  <td><code>apps/backend/.env</code></td>
                 </tr>
               );
             })}
