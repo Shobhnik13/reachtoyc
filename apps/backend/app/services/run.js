@@ -6,6 +6,7 @@ const wrapperService = require('app/services/wrapper');
 const ycService = require('app/services/yc');
 
 const companyModel = require('app/models/company');
+const draftModel = require('app/models/draft');
 const runModel = require('app/models/run');
 
 const config = require('app/configs/config');
@@ -64,6 +65,7 @@ async function getRun(params) {
 
 // status 'canceled' stops an active run; 'queued' resumes a stopped one and retries what failed.
 // 'queued' with addCompanies also drafts that many more new companies of the batch in the same run (50 + 20 = 70).
+// 'queued' with regenerate rewrites every unsent draft of the run with the profile's current prompt.
 async function updateRun(params) {
   if (!params.runId) {
     throw new Error('input_missing');
@@ -93,6 +95,10 @@ async function updateRun(params) {
     }
 
     let companyLimit = params.addCompanies ? run.stats.companies.scraped + params.addCompanies : null;
+
+    if (params.regenerate) {
+      await draftModel.updateDrafts({runId: run.id, fromStatuses: ['generated', 'failed'], sent: false, status: 'pending'});
+    }
 
     await companyModel.updateCompanies({runId: run.id, fromStatus: 'failed', status: 'pending'});
     await runModel.updateRun({runId: run.id, status: 'queued', error: null, finishedAt: null, companyLimit});

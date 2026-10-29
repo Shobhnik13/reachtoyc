@@ -126,6 +126,8 @@ stopped and retries failed companies and drafts.
     instantly with no AI call.
   - **Regenerate all**: fresh research and a full rewrite (with context, it revises the previous draft).
   If a partial regenerate fails, the existing email stays as it was.
+- **✦ Regenerate all (N)** at the top of a run rewrites every unsent draft of the run with your current profile
+  prompt (N AI calls; sent drafts are left alone; Cancel stops it midway).
 - **Copy body / subject / email**, **Open in mail app** (`mailto:`), **Mark sent**, and **Export CSV** (every draft
   matching the current filters).
 - Profile edits (prompt, resume, subject template, model) apply to the next draft or regenerate, in any run.
@@ -152,7 +154,7 @@ routes (send `active: 0` to soft-delete a profile).
 | `GET /batches` | YC batches with company counts |
 | `GET /settings` | Which env keys are set (booleans only) and the database type |
 | `POST /profiles`, `GET /profiles`, `GET/PUT /profiles/:id` | `name`, `ai_provider`, `ai_model`, `resume_markdown`, `system_prompt`, `subject_template`, `apify_max_usd`; responses report whether the provider's env key is set |
-| `POST /runs`, `GET /runs`, `GET/PUT /runs/:id` | Start with `profile_id`, `batch`, `company_limit`, `hiring_only` (Apify is used when `APIFY_TOKEN` is set). `PUT` with `status: canceled` stops a run, `status: queued` resumes it, and `status: queued` plus `add_companies: N` drafts N more new companies in the same run |
+| `POST /runs`, `GET /runs`, `GET/PUT /runs/:id` | Start with `profile_id`, `batch`, `company_limit`, `hiring_only` (Apify is used when `APIFY_TOKEN` is set). `PUT` with `status: canceled` stops a run, `status: queued` resumes it, `status: queued` plus `add_companies: N` drafts N more new companies in the same run, and `status: queued` plus `regenerate: true` rewrites every unsent draft |
 | `GET /companies?run_id=` | Companies with nested `founders` and `draft`. Filters: `statuses`, `q`, `sent`, `limit`, `offset`; returns `total` |
 | `GET /drafts`, `GET/PUT /drafts/:id` | Edit `subject`, `body`, `to_email`, `sent`; `founder_id` switches recipient; `status: pending` with `part` (`all`, `body`, `subject`) and optional `instructions` regenerates |
 

@@ -188,4 +188,21 @@ test.describe('2. Runs, companies and drafts', () => {
     assert.deepEqual(await draftModel.getDraftedSlugs({batch: 'Winter 2024'}), ['acme']);
     assert.deepEqual(await draftModel.getDraftedSlugs({batch: 'Summer 2024'}), []);
   });
+  test(`${++seq}. PUT /runs/:id regenerate queues every unsent draft and leaves sent ones`, async () => {
+    await call(`${base}/drafts/1`, {method: 'PUT', body: {sent: 1}});
+    let companyId = (await call(`${base}/companies?run_id=1&q=beta`)).data.companies[0].id;
+    await companyModel.updateCompany({companyId, status: 'scraped'});
+    let otherDraft = await draftModel.createDraft({runId: 1, companyId});
+    await draftModel.updateDraft({draftId: otherDraft, status: 'generated', subject: 's', body: 'b'});
+    let run = (await call(`${base}/runs/1`)).data.run;
+    if (['queued', 'scraping', 'enriching', 'drafting'].includes(run.status)) await call(`${base}/runs/1`, {method: 'PUT', body: {status: 'canceled'}});
+
+    let res = await call(`${base}/runs/1`, {method: 'PUT', body: {status: 'queued', regenerate: true}});
+    assert.equal(res.code, 'success');
+    assert.equal(res.data.run.status, 'queued');
+    assert.equal((await call(`${base}/drafts/${otherDraft}`)).data.draft.status, 'pending');
+    assert.equal((await call(`${base}/drafts/1`)).data.draft.status, 'generated');
+    await draftModel.updateDraft({draftId: otherDraft, status: 'generated'});
+    await call(`${base}/runs/1`, {method: 'PUT', body: {status: 'canceled'}});
+  });
 });

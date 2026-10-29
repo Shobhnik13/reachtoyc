@@ -102,6 +102,8 @@ For Neon URLs, replace `sslmode=require` with `sslmode=verify-full` (same securi
 - **New run:** always starts from the top of the batch, newest launched companies first.
 - **Draft more:** in the Runs list, **+ Draft more** next to a run adds the next N new companies of that batch to the
   same run (50 + 20 = 70), never repeating one. API: `PUT /runs/:id {"status": "queued", "add_companies": 20}`.
+- **Regenerate all** at the top of a run rewrites every unsent draft (one AI call each; ask the user first). API:
+  `PUT /runs/:id {"status": "queued", "regenerate": true}`.
 - **Regenerate** on a draft: email body only, subject only, or everything, with optional 1-2 lines of extra context.
 - **switch to <founder>:** changes the recipient to another founder of the same company. No AI call.
 - **Editing the profile** (resume, prompt, subject template, model) applies to the next draft or regenerate.

@@ -5,6 +5,8 @@ process.env.NODE_ENV = 'test';
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
+const database = require('app/configs/database');
+
 const aiService = require('app/services/ai');
 const draftService = require('app/services/draft');
 const ycService = require('app/services/yc');
@@ -58,6 +60,26 @@ test.describe('Helpers', () => {
     let t = 'looking out for an engineering opportunity - would love to work as an engineer at {company}';
     assert.equal(draftService.fillSubject(t, {name: 'Praxis'}, {name: 'Ada Lovelace'}), 'looking out for an engineering opportunity - would love to work as an engineer at Praxis');
     assert.equal(draftService.fillSubject('hi {first_name} at {company}', {name: 'Acme'}, null), 'hi  at Acme');
+  });
+
+  test(`${++seq}. database queries retry transient network errors, not real ones`, async () => {
+    let calls = 0;
+    let flaky = database.withRetry(async () => {
+      calls++;
+      if (calls < 3) {
+        throw Object.assign(new Error('Failed query: update ...'), {cause: Object.assign(new Error('read EADDRNOTAVAIL'), {code: 'EADDRNOTAVAIL'})});
+      }
+      return {rows: [1]};
+    });
+    assert.deepEqual(await flaky(), {rows: [1]});
+    assert.equal(calls, 3);
+
+    let broken = database.withRetry(async () => {
+      throw Object.assign(new Error('syntax error'), {code: '42601'});
+    });
+    await assert.rejects(broken(), /syntax error/);
+    assert.equal(database.isTransient({code: 'ECONNRESET'}), true);
+    assert.equal(database.isTransient({code: '23505'}), false);
   });
 
   test(`${++seq}. prompt marks web data as untrusted and asks for JSON`, () => {

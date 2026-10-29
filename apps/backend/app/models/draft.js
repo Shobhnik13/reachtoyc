@@ -103,8 +103,27 @@ async function updateDraft(params) {
   await database.db().update(drafts).set(_update).where(eq(drafts.id, params.draftId));
 }
 
+// Bulk status change for one run's drafts, e.g. queue every unsent draft for a rewrite
+async function updateDrafts(params) {
+  if (!params.runId || !params.fromStatuses || !params.status) {
+    throw new Error('input_missing');
+  }
+
+  let filters = [eq(drafts.run_id, params.runId), inArray(drafts.status, params.fromStatuses), eq(drafts.active, true)];
+  params.hasOwnProperty('sent') ? filters.push(eq(drafts.sent, params.sent)) : null;
+
+  let result = await database
+    .db()
+    .update(drafts)
+    .set({status: params.status, error: null, updated_at: new Date()})
+    .where(and(...filters))
+    .returning({id: drafts.id});
+
+  return result.length;
+}
+
 function _collate(row) {
   return {...row.draft, company: {name: row.company_name, slug: row.company_slug, batch: row.company_batch}};
 }
 
-module.exports = {createDraft, getDrafts, getDraft, getDraftedSlugs, updateDraft};
+module.exports = {createDraft, getDrafts, getDraft, getDraftedSlugs, updateDraft, updateDrafts};

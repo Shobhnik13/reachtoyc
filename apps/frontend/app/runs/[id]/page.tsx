@@ -28,7 +28,7 @@ export default function RunPage() {
   const lastStatus = useRef<string | null>(null);
   const lastDrafts = useRef<Map<number, string>>(new Map());
 
-  const [acting, setActing] = useState<'canceled' | 'queued' | null>(null);
+  const [acting, setActing] = useState<'canceled' | 'queued' | 'regenerate' | null>(null);
 
   // Filters run on the server; the list holds the first `count` matches and grows as you scroll
   const listUrl = useCallback(
@@ -132,6 +132,27 @@ export default function RunPage() {
     }
   }
 
+  // Rewrites every unsent draft of this run with the profile's current prompt; sent drafts stay as they are
+  async function regenerateAll(count: number) {
+    const ok = await confirmToast(`Regenerate all ${count} unsent drafts?`, {
+      description: `Rewrites them with your current profile prompt. ${count} AI calls with web search, billed to your key.${run?.use_apify ? ' Founders whose Apify result never saved get looked up again on Apify.' : ''} Sent drafts are not touched. You can cancel the run midway.`,
+      confirmLabel: `Regenerate ${count}`
+    });
+    if (!ok) return;
+    setActing('regenerate');
+    try {
+      const d = await api<{run: Run}>(`/runs/${id}`, {method: 'PUT', body: {status: 'queued', regenerate: true}});
+      lastStatus.current = d.run.status;
+      setRun(d.run);
+      load(true);
+      toast.success(`Regenerating ${count} drafts`, {description: 'New versions appear as they are written.'});
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setActing(null);
+    }
+  }
+
   // Export covers every match for the current filters, not just the loaded page
   async function exportCsv() {
     let all: Company[];
@@ -160,6 +181,7 @@ export default function RunPage() {
   const drafted = s.drafts.generated + s.drafts.failed;
   const pct = run.status === 'completed' ? 100 : Math.min(100, Math.round(((s.companies.scraped / run.company_limit) * 0.4 + (drafted / run.company_limit) * 0.6) * 100));
   const active = ACTIVE.includes(run.status);
+  const unsent = Math.max(0, s.drafts.generated + s.drafts.failed - s.drafts.sent);
 
   return (
     <>
@@ -176,6 +198,7 @@ export default function RunPage() {
             {run.status === 'scraping' ? 'Reading founders from YC…' : run.status === 'enriching' ? 'Looking up verified emails on Apify…' : run.status === 'drafting' ? 'Researching companies and writing emails…' : run.finished_at ? `finished ${fmtDate(run.finished_at)}` : ''}
           </span>
           <span style={{marginLeft: 'auto'}} className="row">
+            {!active && unsent > 0 ? <button type="button" className="ai" disabled={!!acting} onClick={() => regenerateAll(unsent)}>{acting === 'regenerate' ? <Spinner /> : null}✦ Regenerate all ({unsent})</button> : null}
             {active ? <button type="button" className="danger" disabled={!!acting} onClick={() => setStatus('canceled')}>{acting === 'canceled' ? <Spinner /> : null}Cancel run</button> : null}
             {!active && (run.status !== 'completed' || s.drafts.failed > 0) ? <button type="button" className="ai" disabled={!!acting} onClick={() => setStatus('queued')}>{acting === 'queued' ? <Spinner /> : null}{run.status === 'completed' ? 'Retry failed' : 'Resume'}</button> : null}
           </span>

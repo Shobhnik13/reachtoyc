@@ -46,6 +46,7 @@ async function updateRun(req, res, next) {
 
   let runParams = {runId: parseInt(req.params.run_id), status: String(req.body.status)};
   req.body.add_companies ? (runParams.addCompanies = parseInt(req.body.add_companies)) : null;
+  req.body.regenerate ? (runParams.regenerate = true) : null;
 
   let result = await runService.updateRun(runParams);
   return res.json(result);

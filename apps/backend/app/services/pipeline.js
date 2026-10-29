@@ -77,7 +77,7 @@ async function _execute(runId) {
     try {
       await _enrich(run);
     } catch (e) {
-      await runModel.updateRun({runId, error: `Apify lookup stopped (${e.message}); drafts use site emails and guesses.`});
+      await runModel.updateRun({runId, error: `Apify lookup stopped (${_reason(e)}); drafts for the rest use site emails and guesses.`});
     }
 
     if (await _stopped(runId)) {
@@ -180,8 +180,20 @@ async function _enrich(run) {
       people: group.map((f) => ({name: f.name, domain: domains.get(f.company_id)}))
     });
 
+    // Results are already paid for, so one failed save must not drop the rest of the group
+    let failed = 0;
+
     for (let [i, f] of group.entries()) {
-      await founderModel.updateFounder({founderId: f.id, apifyChecked: true, apifyEmail: hits[i] ? hits[i].email : null, apifyStatus: hits[i] ? hits[i].status : null});
+      try {
+        await founderModel.updateFounder({founderId: f.id, apifyChecked: true, apifyEmail: hits[i] ? hits[i].email : null, apifyStatus: hits[i] ? hits[i].status : null});
+      } catch (e) {
+        failed++;
+        console.error(`Couldn't save the Apify result for founder ${f.id}: ${_reason(e)}`);
+      }
+    }
+
+    if (failed) {
+      await runModel.updateRun({runId: run.id, error: `Couldn't save ${failed} Apify result(s) (database connection dropped); those founders use site emails and guesses.`});
     }
   }
 }
@@ -194,6 +206,17 @@ async function _draft(run) {
       await draftService.generateDraft({companyId: company.id});
     }
   });
+}
+
+// The underlying error (e.g. EADDRNOTAVAIL) instead of Drizzle's "Failed query: ..." wrapper
+function _reason(e) {
+  let cause = e && e.cause;
+
+  if (cause && cause.code) {
+    return `database connection dropped: ${cause.code}`;
+  }
+
+  return (e && (e.code || e.message)) || 'unknown error';
 }
 
 module.exports = {
