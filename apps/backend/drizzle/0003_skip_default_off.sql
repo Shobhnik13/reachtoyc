@@ -1,0 +1,1 @@
+ALTER TABLE "runs" ALTER COLUMN "skip_contacted" SET DEFAULT false;

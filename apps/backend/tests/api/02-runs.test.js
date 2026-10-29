@@ -62,8 +62,8 @@ test.describe('2. Runs, companies and drafts', () => {
     assert.equal(r.batch, data.run.batch);
     assert.equal(r.company_limit, 2);
     assert.equal(r.hiring_only, true);
-    assert.equal(r.skip_contacted, true);
-    assert.equal(r.use_apify, false);
+    assert.equal(r.skip_contacted, false);
+    assert.equal(r.use_apify, true);
     assert.equal(r.ai_model, 'claude-opus-5-5');
     assert.equal(r.resume_chars, data.profile.resume_markdown.length);
     assert.equal(r.resume_markdown, undefined);
@@ -98,6 +98,16 @@ test.describe('2. Runs, companies and drafts', () => {
     assert.equal(typeof run.started_at, 'string');
     await runModel.updateRun({runId: 1, startedAt: run.started_at || new Date()});
     assert.equal((await runModel.getRun({runId: 1})).started_at, '2026-10-29T13:46:45.964Z');
+  });
+
+  test(`${++seq}. PUT /runs/:id queued with add_companies drafts that many more in the same run`, async () => {
+    await call(`${base}/runs/1`, {method: 'PUT', body: {status: 'canceled'}});
+    let bad = await call(`${base}/runs/1`, {method: 'PUT', body: {status: 'queued', add_companies: 9999}});
+    assert.equal(bad.code, 'input_invalid');
+    let res = await call(`${base}/runs/1`, {method: 'PUT', body: {status: 'queued', add_companies: 20}});
+    assert.equal(res.data.run.status, 'queued');
+    assert.equal(res.data.run.company_limit, res.data.run.stats.companies.scraped + 20);
+    assert.equal((await call(`${base}/runs/1`, {method: 'PUT', body: {status: 'queued', add_companies: 20}})).code, 'run_edit_fail');
   });
 
   test(`${++seq}. GET /companies without run_id -> input_missing`, async () => {
@@ -172,9 +182,10 @@ test.describe('2. Runs, companies and drafts', () => {
     assert.equal(res.data.runs[0].stats.drafts.generated, 1);
   });
 
-  test(`${++seq}. drafted slugs (sent or not) feed skip_contacted`, async () => {
-    assert.deepEqual(await draftModel.getDraftedSlugs(), ['acme']);
+  test(`${++seq}. drafted slugs (sent or not) of the same batch feed skip_contacted`, async () => {
+    assert.deepEqual(await draftModel.getDraftedSlugs({batch: 'Winter 2024'}), ['acme']);
     await call(`${base}/drafts/1`, {method: 'PUT', body: {sent: 0}});
-    assert.deepEqual(await draftModel.getDraftedSlugs(), ['acme']);
+    assert.deepEqual(await draftModel.getDraftedSlugs({batch: 'Winter 2024'}), ['acme']);
+    assert.deepEqual(await draftModel.getDraftedSlugs({batch: 'Summer 2024'}), []);
   });
 });

@@ -37,7 +37,7 @@ const runs = pgTable(
     status: runStatus('status').notNull().default('queued'),
     company_limit: integer('company_limit').notNull(),
     hiring_only: boolean('hiring_only').notNull().default(false),
-    skip_contacted: boolean('skip_contacted').notNull().default(true),
+    skip_contacted: boolean('skip_contacted').notNull().default(false),
     use_apify: boolean('use_apify').notNull().default(false),
     ai_provider: aiProvider('ai_provider').notNull(),
     ai_model: text('ai_model').notNull(),

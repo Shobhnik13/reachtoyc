@@ -14,8 +14,7 @@ async function createRun(req, res, next) {
     batch: String(req.body.batch),
     companyLimit: parseInt(req.body.company_limit),
     hiringOnly: !!req.body.hiring_only,
-    skipContacted: req.body.hasOwnProperty('skip_contacted') ? !!req.body.skip_contacted : true,
-    useApify: !!req.body.use_apify
+    skipContacted: !!req.body.skip_contacted
   };
 
   let result = await runService.createRun(runParams);
@@ -46,6 +45,7 @@ async function updateRun(req, res, next) {
   }
 
   let runParams = {runId: parseInt(req.params.run_id), status: String(req.body.status)};
+  req.body.add_companies ? (runParams.addCompanies = parseInt(req.body.add_companies)) : null;
 
   let result = await runService.updateRun(runParams);
   return res.json(result);

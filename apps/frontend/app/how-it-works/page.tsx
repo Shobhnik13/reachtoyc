@@ -45,7 +45,7 @@ const KEYS: {name: string; need: string; what: string; where: React.ReactNode}[]
 ];
 
 const STEPS: {title: string; body: string}[] = [
-  {title: 'Load the batch', body: "Reads every company in the YC batch from YC's public directory, newest launched first. Companies that already have a draft from an earlier run are left out when \"skip companies drafted in earlier runs\" is on (the default), so the next run picks up the next new companies."},
+  {title: 'Load the batch', body: "Reads every company in the YC batch from YC's public directory, newest launched first. A new run always starts from the top of the batch. To continue a run, press + Draft more next to it in the Runs list: it adds the next new companies to the same run (50 + 20 = 70), never repeating one."},
   {title: 'Find founders', body: "Opens each company's YC page for founder names, titles, LinkedIn/X and open roles, until it has as many companies as you asked for. \"Only companies hiring\" skips those with no open roles."},
   {title: 'Find emails', body: 'Checks the company website for published addresses, builds pattern guesses (first@, first.last@, ...) and, if Apify is on, looks up verified emails 50 founders at a time, capped at your USD limit per lookup.'},
   {title: 'Research and write', body: 'For each company, one AI call: the model searches the web for what the company builds and recent news, picks one real detail as the hook, and writes the email from your system prompt and profile Markdown. Sources are saved with the draft.'},

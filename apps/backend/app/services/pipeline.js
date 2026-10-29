@@ -108,7 +108,7 @@ async function _scrape(run) {
     let list = await ycService.getCompanies(run.batch);
 
     if (run.skip_contacted) {
-      let done = new Set(await draftModel.getDraftedSlugs());
+      let done = new Set(await draftModel.getDraftedSlugs({batch: run.batch}));
       list = list.filter((c) => !done.has(c.slug));
     }
 

@@ -12,7 +12,7 @@ export default function NewRunPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [batches, setBatches] = useState<{batch: string; count: number}[]>([]);
-  const [form, setForm] = useState({profile_id: '', batch: '', company_limit: '20', hiring_only: false, skip_contacted: true, use_apify: false});
+  const [form, setForm] = useState({profile_id: '', batch: '', company_limit: '20', hiring_only: false});
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -21,7 +21,7 @@ export default function NewRunPage() {
       setProfiles(d.profiles);
       setLoaded(true);
       const first = d.profiles[0];
-      if (first) setForm((f) => ({...f, profile_id: String(first.id), use_apify: first.has_apify_token}));
+      if (first) setForm((f) => ({...f, profile_id: String(first.id)}));
     }, (e) => {
       setMsg(e.message);
       setLoaded(true);
@@ -40,7 +40,7 @@ export default function NewRunPage() {
   async function start(e: React.FormEvent) {
     e.preventDefault();
     const ok = await confirmToast(`Start a run for ${form.company_limit} companies from ${form.batch}?`, {
-      description: `Calls ${profile?.ai_model}${form.use_apify ? ' and Apify' : ''} for each company, billed to your keys.`,
+      description: `Calls ${profile?.ai_model}${profile?.has_apify_token ? ' and Apify' : ''} for each company, billed to your keys.`,
       confirmLabel: 'Start run'
     });
     if (!ok) return;
@@ -67,10 +67,7 @@ export default function NewRunPage() {
           <div className="grid">
             <label className="f">
               Profile
-              <select value={form.profile_id} onChange={(e) => {
-                const p = profiles.find((x) => String(x.id) === e.target.value);
-                setForm({...form, profile_id: e.target.value, use_apify: !!p?.has_apify_token});
-              }}>
+              <select value={form.profile_id} onChange={(e) => setForm({...form, profile_id: e.target.value})}>
                 {profiles.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.ai_model})</option>)}
               </select>
             </label>
@@ -85,12 +82,8 @@ export default function NewRunPage() {
           </div>
           <div className="row" style={{gap: 18}}>
             <label className="chk"><input type="checkbox" checked={form.hiring_only} onChange={(e) => setForm({...form, hiring_only: e.target.checked})} /> only companies hiring on YC</label>
-            <label className="chk"><input type="checkbox" checked={form.skip_contacted} onChange={(e) => setForm({...form, skip_contacted: e.target.checked})} /> skip companies drafted in earlier runs</label>
-            <label className="chk" title={profile?.has_apify_token ? '' : 'Set APIFY_TOKEN in apps/backend/.env first'}>
-              <input type="checkbox" disabled={!profile?.has_apify_token} checked={form.use_apify} onChange={(e) => setForm({...form, use_apify: e.target.checked})} /> verify emails with Apify
-            </label>
           </div>
-          <p className="hint">Companies are taken newest-launched first. Nothing starts until you press Start run. Each draft is one AI call with web search, so cost grows with the number of companies{form.use_apify && profile ? `; Apify is capped at $${profile.apify_max_usd} per 50 founders` : ''}.</p>
+          <p className="hint">A new run always starts from the top of the batch, newest launched first. To add more companies to an existing run, use + Draft more next to it in the Runs list. Nothing starts until you press Start run. Each draft is one AI call with web search, so cost grows with the number of companies. {profile?.has_apify_token ? `Emails are verified with Apify (APIFY_TOKEN is set), capped at $${profile.apify_max_usd} per 50 founders.` : 'APIFY_TOKEN is not set, so emails come from company sites and pattern guesses.'}</p>
         </section>
         {profile && !ready ? <p className="status err">{!profile.has_ai_key ? `Set ${profile.ai_key_env} in apps/backend/.env and restart the backend. ` : ''}{!profile.resume_markdown.trim() ? <>Add your resume to the <a href={`/profiles/${profile.id}`}>profile</a>.</> : null}</p> : null}
         <p className="row">

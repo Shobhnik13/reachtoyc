@@ -5,80 +5,177 @@ company on the web with your AI model, and writes one personalised cold email pe
 system prompt. You review the drafts, edit them, then copy them or open them in your mail app.
 
 ```
-apps/backend   Express + Drizzle (Postgres or PGlite), the run pipeline
+apps/backend   Express + Drizzle ORM (Postgres or embedded PGlite) and the run pipeline
 apps/frontend  Next.js app; proxies /api/* to the backend
 ```
 
-## Setup
+## Run it locally
 
-Node 22+.
+You need Node 22 or newer, a Postgres database (or none, see `pglite` below) and an API key for one AI provider.
 
-```
-git clone https://github.com/Shobhnik13/reachtoyc && cd reachtoyc
-npm install
-cp apps/backend/.env.example apps/backend/.env    # then fill it in
-npm run dev                                       # backend :4100, frontend :3000
-```
+1. **Install**
 
-Open http://localhost:3000, create a profile (provider, model, resume Markdown, system prompt), then start a run.
+   ```
+   git clone https://github.com/Shobhnik13/reachtoyc && cd reachtoyc
+   npm install
+   ```
 
-All credentials live in `apps/backend/.env` (gitignored). None are stored in the database or sent to the browser.
+2. **Add your keys.** Copy the example file and fill it in:
 
-| Variable | Needed for |
-|---|---|
-| `DATABASE_URL` | Postgres URL (Neon, Supabase, ...). `pglite://./.data` runs an embedded Postgres with no setup. |
-| `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` | The provider your profile uses. |
-| `APIFY_TOKEN` | Optional verified-email lookups. |
-| `PORT` | Backend port, default 4100. The frontend reads `BACKEND_URL` (default `http://127.0.0.1:4100`). |
+   ```
+   cp apps/backend/.env.example apps/backend/.env
+   ```
 
-Migrations in `apps/backend/drizzle/` run automatically when the backend starts. After changing
-`app/models/schema.js`, run `npm run db:generate -w backend`.
+   | Variable | Needed | What it's for |
+   |---|---|---|
+   | `DATABASE_URL` | Yes | Postgres connection string (Neon, Supabase, local...). Use `pglite://./.data` for a built-in local database with no setup. |
+   | `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` | One of them | The provider your profile uses. It researches each company and writes the email. |
+   | `APIFY_TOKEN` | Optional | Verified founder email lookups. |
+   | `PORT` | Optional | Backend port, default `4100`. The frontend reads `BACKEND_URL` (default `http://127.0.0.1:4100`). |
 
-## What a run does
+   All credentials live only in `apps/backend/.env`, which is gitignored. They are never stored in the database or
+   sent to the browser. The **How it works** page in the app shows which ones are set.
 
-1. **Scrape.** Loads the batch from YC's public directory (newest launched first) and reads each company's YC page
-   for founders, LinkedIn/X and open roles, until it has `company_limit` qualifying companies. **Hiring only** skips
-   companies with no open roles. **Skip companies drafted in earlier runs** (on by default) leaves out every company that already has a draft, so a second run on the same batch continues with new companies.
-2. **Find emails.** Addresses published on the company site, pattern guesses (`first@`, `first.last@`, ...), and,
-   if Apify is enabled for the run, verified lookups through the
-   [`email-finder-by-name-and-domain`](https://apify.com/snipercoder/email-finder-by-name-and-domain) actor, 50
-   founders per actor run, capped at the profile's USD limit. An Apify failure doesn't stop the run.
-3. **Research and write.** For each company, one call to your model with its built-in web search (Claude
-   `web_search`, OpenAI `web_search`, Gemini Google Search grounding). The system prompt and resume form a stable
-   prefix, so providers cache them across companies. The model returns subject, body and the hook it used, and the
-   sources it searched are saved with the draft.
-4. **Review.** Edit the recipient, subject or body, regenerate a draft, write to a different founder, copy, open
-   in your mail app, mark sent, or export CSV.
+3. **Start both apps**
 
-Runs execute in the backend process. Nothing paid starts on its own: a backend restart marks unfinished runs and
-regenerations as interrupted, and you press **Resume** or **Regenerate**. Each stage only touches unfinished rows, so
-a resumed run picks up where it stopped. **Cancel** stops a run; **Retry failed** retries failed companies and
-drafts. Drafts always use the profile's current prompt, resume and model, so edits apply to the next regenerate.
+   ```
+   npm run dev        # backend on :4100, frontend on :3000
+   ```
+
+   Database migrations (`apps/backend/drizzle/`) run automatically when the backend starts.
+
+4. **Create a profile** at http://localhost:3000/profiles/new:
+   - **AI provider and model** (default `claude-opus-5-5`; OpenAI and Gemini also work).
+   - **Your profile in Markdown**: resume, links, every job, side projects, numbers. It's the only source of facts
+     the AI may use about you. You can paste it or upload a `.md` file.
+   - **Subject line template**, e.g.
+     `looking out for an engineering opportunity - would love to work as an engineer at {company}`.
+     `{company}` and `{first_name}` are filled in by code, so every subject comes out exactly like that.
+     Leave it empty to let the AI write subjects.
+   - **System prompt**: tone, length and structure of the email. Leave it empty to start from the default.
+
+5. **Start a run** at http://localhost:3000/runs/new: pick the profile, a YC batch, how many companies, and the
+   options. Nothing starts (and nothing is billed) until you press **Start run** and confirm.
+
+6. **Review** on the run page: edit, regenerate, switch founder, copy or open in your mail app, and mark sent.
+
+## How it works
+
+### Where the data comes from
+
+| Step | Source | Key | Cost |
+|---|---|---|---|
+| Companies in a batch | YC's public company directory (the search ycombinator.com itself uses) | none | free |
+| Founders, titles, LinkedIn/X, open roles | Each company's ycombinator.com page | none | free |
+| Emails published on the company site | Homepage and `/contact`, `/about`, `/team` pages | none | free |
+| Pattern guesses | `first@`, `first.last@`, `flast@`, `firstlast@` built from the name and domain | none | free |
+| Verified emails (automatic when `APIFY_TOKEN` is set) | Apify actor [`email-finder-by-name-and-domain`](https://apify.com/snipercoder/email-finder-by-name-and-domain) | `APIFY_TOKEN` | your Apify account, capped per lookup |
+| Company research and the email itself | Your AI model with its built-in web search | AI key | your AI account |
+
+The AI key never looks for emails or companies; Apify never writes anything.
+
+Each draft shows where its address came from:
+
+| Label | Meaning | How reliable |
+|---|---|---|
+| `verified` | Apify confirmed the mailbox | Checked |
+| `unverified` | Apify found it but couldn't confirm it | Usually right |
+| `on site` | Published on the company's website | Real, may be a shared inbox |
+| `guess` | Most common pattern | First guess right about 80% of the time (checked against 151 Apify-verified founder emails; the right address was in the guess list 93% of the time) |
+
+With Apify on, most drafts get a `verified` or `unverified` address and only the rest fall back to guesses.
+
+### What a run does
+
+1. **Load the batch.** Every company in the batch, newest launched first. A new run always starts from the top,
+   whatever earlier runs did. To continue a run instead, press **+ Draft more** next to it in the Runs list and pick a number: the
+   same run drafts that many more new companies from the batch (50 drafted + 20 more = 70 in that run), never
+   repeating one it already has.
+2. **Find founders.** Reads YC pages until it has as many companies as you asked for. **Only companies hiring** skips
+   companies with no open roles on YC.
+3. **Find emails.** Site emails and guesses for everyone, plus Apify lookups in groups of 50 founders whenever
+   `APIFY_TOKEN` is set. An Apify failure doesn't stop the run.
+4. **Research and write.** One AI call per company: the model searches the web for what the company builds and
+   recent news, and writes the email from your system prompt and profile. The prompt and profile are a stable prefix,
+   so providers cache them across companies.
+5. **Review.** Everything happens on the run page (below).
+
+Runs execute inside the backend process. A backend restart never restarts paid work by itself: unfinished runs and
+regenerations are marked interrupted, and you press **Resume** or **Regenerate**. A resumed run continues where it
+stopped and retries failed companies and drafts.
+
+### Reviewing drafts
+
+- The run page loads 10 drafts and loads 10 more as you scroll. Search, the Drafts / Skipped filter and **hide sent**
+  run on the server, so they cover the whole run.
+- **To / Subject / Body** are editable; **Save edits** stores them.
+- **switch to <founder>** changes the recipient to another founder of the same company: their address goes into To
+  and the greeting name is swapped. No AI call.
+- **✦ Regenerate** opens a panel with an optional 1-2 line context for the AI (e.g. "lead with the agentic pipeline")
+  and three options, each one AI call:
+  - **Regenerate email**: new body; the current subject is kept and given as context.
+  - **Regenerate subject**: new subject from the current body, no web search. With a subject template it's filled
+    instantly with no AI call.
+  - **Regenerate all**: fresh research and a full rewrite (with context, it revises the previous draft).
+  If a partial regenerate fails, the existing email stays as it was.
+- **Copy body / subject / email**, **Open in mail app** (`mailto:`), **Mark sent**, and **Export CSV** (every draft
+  matching the current filters).
+- Profile edits (prompt, resume, subject template, model) apply to the next draft or regenerate, in any run.
+- Buttons are coloured by what they do: black/white for main actions, amber for anything that calls the AI, green
+  for sent, blue for saving, red for stopping a run.
+
+The app has a light and a dark theme (toggle at the top right; the first visit follows your system setting),
+toast notifications for every action, and loaders on every request.
+
+### Where your data lives
+
+- **Profiles, runs, companies, founders and drafts:** in your database (`DATABASE_URL`). Your resume, system prompt and
+  subject template are in the `profiles` table; edit them in the app at `/profiles/<id>`.
+- **Keys:** only in `apps/backend/.env`.
+- **Nothing personal is in this repo.** `.env`, `.data/` (PGlite), `node_modules` and `.next` are gitignored.
 
 ## API
 
-JSON envelope on every response: `{code, error, message, data}`. Updates are `PUT`; there are no `DELETE` or `PATCH`
-routes (set `active: 0` to soft-delete a profile).
+Every response uses the envelope `{code, error, message, data}`. Updates are `PUT`; there are no `DELETE` or `PATCH`
+routes (send `active: 0` to soft-delete a profile).
 
 | Route | |
 |---|---|
 | `GET /batches` | YC batches with company counts |
 | `GET /settings` | Which env keys are set (booleans only) and the database type |
-| `POST/GET /profiles`, `GET/PUT /profiles/:id` | Provider, model, resume, prompt. Reports which env keys are set. |
-| `POST/GET /runs`, `GET/PUT /runs/:id` | Start (`profile_id`, `batch`, `company_limit`, `hiring_only`, `skip_contacted`, `use_apify`), list, cancel (`status: canceled`), resume (`status: queued`) |
-| `GET /companies?run_id=` | Companies with nested `founders` and `draft` |
-| `GET /drafts`, `GET/PUT /drafts/:id` | Edit `subject`/`body`/`to_email`, `sent`, `founder_id`; `status: pending` regenerates |
+| `POST /profiles`, `GET /profiles`, `GET/PUT /profiles/:id` | `name`, `ai_provider`, `ai_model`, `resume_markdown`, `system_prompt`, `subject_template`, `apify_max_usd`; responses report whether the provider's env key is set |
+| `POST /runs`, `GET /runs`, `GET/PUT /runs/:id` | Start with `profile_id`, `batch`, `company_limit`, `hiring_only` (Apify is used when `APIFY_TOKEN` is set). `PUT` with `status: canceled` stops a run, `status: queued` resumes it, and `status: queued` plus `add_companies: N` drafts N more new companies in the same run |
+| `GET /companies?run_id=` | Companies with nested `founders` and `draft`. Filters: `statuses`, `q`, `sent`, `limit`, `offset`; returns `total` |
+| `GET /drafts`, `GET/PUT /drafts/:id` | Edit `subject`, `body`, `to_email`, `sent`; `founder_id` switches recipient; `status: pending` with `part` (`all`, `body`, `subject`) and optional `instructions` regenerates |
 
-## Tests
+## Development
 
 ```
-npm test    # node:test against an in-memory PGlite; never reads .env, makes no AI or Apify calls
-npm run lint
+npm test                        # node:test on an in-memory PGlite; never reads .env, makes no AI or Apify calls
+npm run lint                    # eslint for the backend
+npm run typecheck -w frontend   # tsc for the frontend
+npm run db:generate -w backend  # new migration after editing apps/backend/app/models/schema.js
 ```
+
+Backend layout: `routes` → `controllers` (input parsing) → `services` (logic, the run pipeline in
+`services/pipeline.js`, providers in `services/ai.js`, YC scraping in `services/yc.js`) → `models` (Drizzle queries).
+
+## Troubleshooting
+
+- **Frontend shows "Couldn't reach the backend" or a proxy error:** the backend isn't running or crashed. Check the
+  `npm run dev` output. Another app on port 4100? Set `PORT` in `apps/backend/.env` and `BACKEND_URL` for the frontend.
+- **A key shows "not set" on How it works:** add it to `apps/backend/.env` and restart the backend.
+- **Hosted Postgres drops idle connections** (Neon does): the backend logs it and reconnects on the next query.
+  Use `sslmode=verify-full` in the URL to silence the `pg` SSL-mode warning.
+- **Run stopped with "Interrupted by a backend restart":** press **Resume** on the run page.
 
 ## Notes
 
 - No auth: the backend listens on 127.0.0.1 only. Don't expose it to the internet as is.
-- Everything from YC and the web is untrusted. The prompt tells the model to treat it as data, and the UI only
-  links `http(s)` URLs.
+- Everything from YC and the web is untrusted. The prompt tells the model to treat it as data, and the UI only links
+  `http(s)` URLs.
 - Write to people one at a time, keep it short, and take "no" for an answer.
+
+## License
+
+MIT

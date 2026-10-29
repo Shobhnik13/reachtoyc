@@ -63,6 +63,7 @@ async function updateRun(params) {
 
   let _update = {updated_at: new Date()};
   params.status ? (_update.status = params.status) : null;
+  params.companyLimit ? (_update.company_limit = params.companyLimit) : null;
   params.hasOwnProperty('error') ? (_update.error = params.error) : null;
   params.hasOwnProperty('startedAt') ? (_update.started_at = params.startedAt ? new Date(params.startedAt) : null) : null;
   params.hasOwnProperty('finishedAt') ? (_update.finished_at = params.finishedAt ? new Date(params.finishedAt) : null) : null;

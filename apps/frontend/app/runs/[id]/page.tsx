@@ -8,7 +8,7 @@ import {Loading, Spinner} from '@/components/Spinner';
 import {ACTIVE, api, bestEmail, EMAIL_LABEL, fmtDate, type Company, type Draft, type Run} from '@/lib/api';
 import {confirmToast, toast} from '@/lib/toast';
 
-const POLL_MS = 3000;
+const POLL_MS = 30000;
 const PAGE = 10;
 const SHOW_STATUSES: Record<string, string> = {drafts: 'scraped', skipped: 'skipped,failed', all: 'scraped,skipped,failed'};
 

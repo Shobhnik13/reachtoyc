@@ -26,9 +26,12 @@ async function createRun(params) {
     throw new Error('entity_missing');
   }
 
-  if (!profile.ai_key || !profile.resume_markdown.trim() || (params.useApify && !profile.apify_token)) {
+  if (!profile.ai_key || !profile.resume_markdown.trim()) {
     throw new Error('profile_incomplete');
   }
+
+  // Emails are verified with Apify whenever APIFY_TOKEN is set; without it, site emails and guesses
+  params.useApify = !!profile.apify_token;
 
   // Snapshot the prompt and resume so later profile edits don't change this run
   params.aiProvider = profile.ai_provider;
@@ -59,7 +62,8 @@ async function getRun(params) {
   return _respond(params.runId);
 }
 
-// status 'canceled' stops an active run; 'queued' resumes a stopped one and retries what failed
+// status 'canceled' stops an active run; 'queued' resumes a stopped one and retries what failed.
+// 'queued' with addCompanies also drafts that many more new companies of the batch in the same run (50 + 20 = 70).
 async function updateRun(params) {
   if (!params.runId) {
     throw new Error('input_missing');
@@ -84,8 +88,14 @@ async function updateRun(params) {
       throw new Error('run_edit_fail');
     }
 
+    if (params.hasOwnProperty('addCompanies') && !(params.addCompanies >= 1 && params.addCompanies <= config.PIPELINE.MAX_COMPANY_LIMIT)) {
+      throw new Error('input_invalid');
+    }
+
+    let companyLimit = params.addCompanies ? run.stats.companies.scraped + params.addCompanies : null;
+
     await companyModel.updateCompanies({runId: run.id, fromStatus: 'failed', status: 'pending'});
-    await runModel.updateRun({runId: run.id, status: 'queued', error: null, finishedAt: null});
+    await runModel.updateRun({runId: run.id, status: 'queued', error: null, finishedAt: null, companyLimit});
     config.PIPELINE.AUTOSTART ? pipelineService.start(run.id) : null;
   } else if (params.status) {
     throw new Error('input_invalid');

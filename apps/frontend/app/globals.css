@@ -255,3 +255,5 @@ button.danger:hover { border-color: var(--err); }
 .regen { margin-top: 12px; padding: 14px; border: 1px dashed color-mix(in srgb, var(--warn) 45%, var(--line)); border-radius: 12px; background: color-mix(in srgb, var(--warn) 5%, var(--card)); animation: unfold 0.2s ease both; }
 textarea.short { min-height: 64px; }
 [data-sonner-toaster][data-y-position='top'] { top: 72px !important; }
+.more { display: inline-flex; gap: 6px; align-items: center; animation: unfold 0.15s ease both; }
+.more input { width: 64px; padding: 4px 8px; font-size: 13px; border-radius: 8px; }

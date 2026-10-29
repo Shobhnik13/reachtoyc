@@ -3,12 +3,15 @@
 import Link from 'next/link';
 import {useEffect, useState} from 'react';
 
+import DraftMore from '@/components/DraftMore';
 import {Loading} from '@/components/Spinner';
 import {ACTIVE, api, fmtDate, type Run} from '@/lib/api';
 
 export default function RunsPage() {
   const [runs, setRuns] = useState<Run[] | null>(null);
   const [err, setErr] = useState('');
+
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -22,7 +25,12 @@ export default function RunsPage() {
       );
     load();
     return () => clearTimeout(timer);
-  }, []);
+  }, [tick]);
+
+  function onMore(run: Run) {
+    setRuns((rs) => rs?.map((r) => (r.id === run.id ? run : r)) || null);
+    setTick((t) => t + 1);
+  }
 
   return (
     <>
@@ -42,7 +50,7 @@ export default function RunsPage() {
       {runs?.length ? (
         <section className="panel">
           <table>
-            <thead><tr><th>Run</th><th>Batch</th><th>Profile</th><th>Status</th><th>Drafts</th><th>Sent</th><th>Started</th></tr></thead>
+            <thead><tr><th>Run</th><th>Batch</th><th>Profile</th><th>Status</th><th>Drafts</th><th>Sent</th><th>Started</th><th></th></tr></thead>
             <tbody>
               {runs.map((r) => (
                 <tr key={r.id}>
@@ -53,6 +61,7 @@ export default function RunsPage() {
                   <td>{r.stats.drafts.generated} / {r.company_limit}{r.stats.drafts.failed ? <span className="err"> ({r.stats.drafts.failed} failed)</span> : null}</td>
                   <td>{r.stats.drafts.sent}</td>
                   <td className="muted">{fmtDate(r.started_at || r.created_at)}</td>
+                  <td style={{textAlign: 'right'}}><DraftMore run={r} onDone={onMore} /></td>
                 </tr>
               ))}
             </tbody>

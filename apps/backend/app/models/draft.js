@@ -62,14 +62,18 @@ async function getDraft(params) {
   return result.length ? _collate(utilsService.sanitizeSqlResult(result[0])) : null;
 }
 
-// Companies already drafted (sent or not) in any run, so a new run doesn't redo them
-async function getDraftedSlugs() {
+// Companies of a batch already drafted (sent or not) in any run, so rerunning the batch continues with new ones
+async function getDraftedSlugs(params) {
+  if (!params.batch) {
+    throw new Error('input_missing');
+  }
+
   let result = await database
     .db()
     .selectDistinct({slug: companies.slug})
     .from(drafts)
     .innerJoin(companies, eq(companies.id, drafts.company_id))
-    .where(and(inArray(drafts.status, ['generated', 'pending']), eq(drafts.active, true)));
+    .where(and(eq(companies.batch, params.batch), inArray(drafts.status, ['generated', 'pending']), eq(drafts.active, true)));
 
   return result.map((r) => r.slug);
 }
