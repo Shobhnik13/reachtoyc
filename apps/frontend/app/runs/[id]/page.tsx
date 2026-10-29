@@ -229,12 +229,12 @@ export default function RunPage() {
       <p className="muted" style={{fontSize: 13}}>{companies ? `${companies.length} of ${total} shown` : ''}</p>
       {!companies ? <Loading label="Loading drafts" /> : null}
       {companies && !companies.length ? <p className="muted">Nothing matches.</p> : null}
-      {companies?.map((c) =>
+      {companies?.map((c, i) =>
         c.status === 'scraped' ? (
-          <DraftCard key={c.id} company={c} onChange={onDraft} />
+          <DraftCard key={c.id} company={c} serial={i + 1} onChange={onDraft} />
         ) : (
           <details key={c.id} className="card">
-            <summary><span className="name">{c.name}</span><span className={`badge ${c.status}`}>{c.status}</span><span className="meta">{c.error}</span></summary>
+            <summary><span className="serial">{i + 1}.</span><span className="name">{c.name}</span><span className={`badge ${c.status}`}>{c.status}</span><span className="meta">{c.error}</span></summary>
             <div className="cbody"><p className="r muted">{c.one_liner}</p>{c.founders.map((f) => <p key={f.id} className="r">{f.name} · {bestEmail(f).email || 'no email'}</p>)}</div>
           </details>
         )

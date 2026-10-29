@@ -21,7 +21,7 @@ function CopyButton({text, label, what, primary}: {text: string; label: string; 
   );
 }
 
-export default function DraftCard({company, onChange}: {company: Company; onChange: (d: Draft) => void}) {
+export default function DraftCard({company, serial, onChange}: {company: Company; serial: number; onChange: (d: Draft) => void}) {
   const draft = company.draft;
   const [subject, setSubject] = useState(draft?.subject || '');
   const [body, setBody] = useState(draft?.body || '');
@@ -88,6 +88,7 @@ export default function DraftCard({company, onChange}: {company: Company; onChan
   return (
     <details className={`card ${draft?.sent ? 'sent' : ''}`}>
       <summary>
+        <span className="serial">{serial}.</span>
         <span className="name">{company.name}</span>
         <span className={`badge ${badge}`}>{label}</span>
         {draft?.sent ? <span className="badge valid">sent</span> : null}
