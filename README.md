@@ -7,6 +7,7 @@ system prompt. You review the drafts, edit them, then copy them or open them in 
 ```
 apps/backend   Express + Drizzle ORM (Postgres or embedded PGlite) and the run pipeline
 apps/frontend  Next.js app; proxies /api/* to the backend
+apps/landing   Landing page as plain HTML/CSS/JS (no build), deployable anywhere
 ```
 
 ## Set up with an AI agent
@@ -180,7 +181,11 @@ npm test                        # node:test on an in-memory PGlite; never reads 
 npm run lint                    # eslint for the backend
 npm run typecheck -w frontend   # tsc for the frontend
 npm run db:generate -w backend  # new migration after editing apps/backend/app/models/schema.js
+npm run landing                 # serve apps/landing on http://localhost:3001 (plain static files)
 ```
+
+`apps/landing` is plain `index.html` + `styles.css` + `script.js` (+ `favicon.svg`, `llms.txt`). Open the file directly
+or host the folder on any static host (GitHub Pages, Netlify, Vercel with root directory `apps/landing`).
 
 Backend layout: `routes` → `controllers` (input parsing) → `services` (logic, the run pipeline in
 `services/pipeline.js`, providers in `services/ai.js`, YC scraping in `services/yc.js`) → `models` (Drizzle queries).

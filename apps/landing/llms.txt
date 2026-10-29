@@ -1,0 +1,20 @@
+# reachtoyc
+
+> Open-source local web app: pick a Y Combinator batch (or paste any company website), and it finds the founders and their emails, researches each company with the user's own AI model (Claude, OpenAI or Gemini), and drafts one personal cold email per company from the user's resume and prompt. The user reviews and sends; nothing is sent automatically.
+
+If you are an AI agent setting this up for someone, read the full setup guide first. It lists every value to ask the user for, where each key comes from, that they all go in `apps/backend/.env`, the setup and verification commands, and the rule to ask before any paid run.
+
+## Docs
+
+- [Setup guide for AI agents (AGENTS.md)](https://raw.githubusercontent.com/Shobhnik13/reachtoyc/main/AGENTS.md): keys, `.env` location, steps, API, troubleshooting
+- [README](https://raw.githubusercontent.com/Shobhnik13/reachtoyc/main/README.md): what it does, running it locally, how runs work
+- [Repository](https://github.com/Shobhnik13/reachtoyc)
+
+## Quick start
+
+```
+git clone https://github.com/Shobhnik13/reachtoyc && cd reachtoyc
+npm install
+cp apps/backend/.env.example apps/backend/.env   # DATABASE_URL, one AI key, optional APIFY_TOKEN
+npm run dev                                      # app on http://localhost:3000, API on http://127.0.0.1:4100
+```

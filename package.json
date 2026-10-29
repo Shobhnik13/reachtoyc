@@ -1,11 +1,15 @@
 {
   "name": "reachtoyc",
   "private": true,
-  "workspaces": ["apps/*"],
+  "workspaces": [
+    "apps/backend",
+    "apps/frontend"
+  ],
   "scripts": {
     "dev": "concurrently -n backend,frontend -c blue,magenta \"npm run dev -w backend\" \"npm run dev -w frontend\"",
     "test": "npm test -w backend",
-    "lint": "npm run lint -w backend"
+    "lint": "npm run lint -w backend",
+    "landing": "python3 -m http.server 3001 --directory apps/landing"
   },
   "devDependencies": {
     "concurrently": "^10.0.6"
