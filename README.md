@@ -1,5 +1,7 @@
 # reachtoyc
 
+Live: https://reachtoyc.vercel.app
+
 Pick a YC batch and start a **run**. The run finds every company's founders and their likely emails, researches each
 company on the web with your AI model, and writes one personalised cold email per company from your own profile and
 system prompt. You review the drafts, edit them, then copy them or open them in your mail app.
@@ -185,7 +187,8 @@ npm run landing                 # serve apps/landing on http://localhost:3001 (p
 ```
 
 `apps/landing` is plain `index.html` + `styles.css` + `script.js` (+ `favicon.svg`, `llms.txt`). Open the file directly
-or host the folder on any static host (GitHub Pages, Netlify, Vercel with root directory `apps/landing`).
+or host the folder on any static host. It is deployed at https://reachtoyc.vercel.app (Vercel project `reachtoyc`;
+redeploy with `cd apps/landing && vercel deploy --prod`).
 
 Backend layout: `routes` → `controllers` (input parsing) → `services` (logic, the run pipeline in
 `services/pipeline.js`, providers in `services/ai.js`, YC scraping in `services/yc.js`) → `models` (Drizzle queries).
