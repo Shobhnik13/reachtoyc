@@ -2,8 +2,9 @@
 
 You are helping a user set up and use **reachtoyc**, a local web app that picks a Y Combinator batch, finds each
 company's founders and their likely emails, researches each company with the user's AI model, and drafts one
-personalised cold email per company from the user's own profile. The user reviews the drafts, then copies them or
-opens them in their mail app. Nothing is sent automatically.
+personalised cold email per company from the user's own profile. The user reviews the drafts and sends them from
+their own Gmail (optional: `GMAIL_USER` + `GMAIL_APP_PASSWORD`), one at a time or with Send all as a paced background
+job, or copies them into their mail app. Nothing is sent without the user's click.
 
 Repo: https://github.com/Shobhnik13/reachtoyc. Human-oriented docs: `README.md`.
 
@@ -12,6 +13,9 @@ Repo: https://github.com/Shobhnik13/reachtoyc. Human-oriented docs: `README.md`.
 - **Never spend the user's money without asking.** Starting a run, "Draft more", resuming a run and regenerating a
   draft all call the user's AI provider (and Apify if set). Confirm with the user first, and say roughly how many
   companies or calls it will be.
+- **Never send email without the user's explicit go-ahead.** Sending is irreversible and goes from their Gmail.
+  Before the first real send, offer `send_test` (mails the draft to their own inbox), and say how many emails a Send
+  all will queue and their daily limit.
 - **Credentials go only in `apps/backend/.env`.** Never commit it (it is gitignored), never paste keys into other
   files, issues or chat summaries, and never print them back to the user.
 - **Ask the user for every value below.** Don't invent keys, URLs or resume content.

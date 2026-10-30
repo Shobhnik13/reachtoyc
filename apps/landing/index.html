@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>reachtoyc: cold emails to YC founders, researched and written for you</title>
-  <meta name="description" content="Open source. Pick a YC batch; reachtoyc finds every founder and their email, researches each company with your own AI, and drafts one personal email per company from your resume.">
+  <meta name="description" content="Open source. Pick a YC batch; reachtoyc finds every founder and their email, researches each company with your own AI, and drafts one personal email per company from your resume, then sends it from your own Gmail.">
   <meta property="og:title" content="reachtoyc">
-  <meta property="og:description" content="Cold emails to YC founders, researched and written for you. Open source, runs on your machine.">
+  <meta property="og:description" content="Cold emails to YC founders, researched, written and sent from your Gmail. Open source, runs on your machine.">
   <meta property="og:type" content="website">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="alternate" type="text/plain" href="llms.txt" title="reachtoyc setup guide for AI agents">
@@ -38,7 +38,7 @@
       <div class="hero-grid" aria-hidden="true"></div>
       <p class="eyebrow reveal"><span class="dot"></span>open source · runs on your machine</p>
       <h1 class="reveal" style="--d: 80ms">Cold emails to YC founders, researched and written for you.</h1>
-      <p class="lede reveal" style="--d: 160ms">Pick a batch. reachtoyc finds every founder and their email, reads up on each company with your own AI, and drafts one personal email per company from your resume. You review it and hit send.</p>
+      <p class="lede reveal" style="--d: 160ms">Pick a batch. reachtoyc finds every founder and their email, reads up on each company with your own AI, drafts one personal email per company from your resume, and sends it from your own Gmail when you say so.</p>
       <div class="cta reveal" style="--d: 240ms">
         <a class="btn primary lg" href="https://github.com/Shobhnik13/reachtoyc#run-it-locally" target="_blank" rel="noopener noreferrer">Get started →</a>
         <a class="btn lg" href="https://github.com/Shobhnik13/reachtoyc" target="_blank" rel="noopener noreferrer">★ Star on GitHub</a>
@@ -55,7 +55,7 @@
           <div class="preview-stats">
             <span><b>100</b>companies</span>
             <span><b>92</b>drafts</span>
-            <span><b>44</b>verified</span>
+            <span><b>30</b>sent today</span>
           </div>
           <div class="preview-mail">
             <div class="preview-to"><span class="muted">To</span> jon@acme.dev <span class="badge valid">verified</span></div>
@@ -81,7 +81,7 @@
         <div class="card reveal"><span class="step-n">01</span><h3>Pick a batch</h3><p>Any YC batch, from the latest back to 2005. Choose how many companies, or only the ones hiring.</p></div>
         <div class="card reveal" style="--d: 90ms"><span class="step-n">02</span><h3>Find the founders</h3><p>Names, roles, LinkedIn and open jobs from YC, with emails from company sites, smart guesses and Apify verification.</p></div>
         <div class="card reveal" style="--d: 180ms"><span class="step-n">03</span><h3>Research and write</h3><p>Your own AI model reads up on each company and writes one personal email from your resume and your rules.</p></div>
-        <div class="card reveal" style="--d: 270ms"><span class="step-n">04</span><h3>Review and send</h3><p>Edit, regenerate, switch founder, copy or open in your mail app. Nothing goes out without you.</p></div>
+        <div class="card reveal" style="--d: 270ms"><span class="step-n">04</span><h3>Review and send</h3><p>Edit, regenerate or switch founder, then send from your own Gmail: one at a time, or Send all at a safe daily pace. Nothing goes out without your click.</p></div>
       </div>
     </section>
 
@@ -91,7 +91,7 @@
         <div class="card reveal"><h3>Your keys, your machine</h3><p>Runs locally. API keys live in one .env file and never leave your backend.</p></div>
         <div class="card reveal" style="--d: 90ms"><h3>Claude, OpenAI or Gemini</h3><p>Bring whichever model you like; each one researches with its own web search.</p></div>
         <div class="card reveal" style="--d: 180ms"><h3>Emails you can trust</h3><p>Every address is labelled verified, unverified, on site or guess, so you know before you send.</p></div>
-        <div class="card reveal"><h3>Built for iterating</h3><p>Regenerate the subject, the body or everything, with a line of extra context. Draft more anytime.</p></div>
+        <div class="card reveal"><h3>Send from your Gmail</h3><p>Send one email or a whole run straight from your own Gmail, in the background: a few a minute, a daily limit you set, nobody emailed twice. Free with a Gmail App Password.</p></div>
         <div class="card reveal" style="--d: 90ms"><h3>Any company, not just YC</h3><p>Paste a website and the same research, email lookup and writing runs for that one company.</p></div>
         <div class="card reveal" style="--d: 180ms"><h3>Agent-ready setup</h3><p>Hand the repo to Claude Code or Codex: AGENTS.md walks them through every key and step.</p></div>
       </div>
@@ -99,7 +99,7 @@
 
     <section class="section final reveal">
       <h2>Start your first run in five minutes.</h2>
-      <p class="lede">Clone it, add one AI key, paste your resume. Free and open source.</p>
+      <p class="lede">Clone it, add one AI key, paste your resume. Free and open source, and sending from your Gmail is free too.</p>
       <div class="cta">
         <a class="btn primary lg" href="https://github.com/Shobhnik13/reachtoyc#run-it-locally" target="_blank" rel="noopener noreferrer">Set it up →</a>
         <a class="btn lg" href="https://github.com/Shobhnik13/reachtoyc/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">Setup guide for AI agents</a>

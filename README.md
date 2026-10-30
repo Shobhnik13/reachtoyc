@@ -4,7 +4,8 @@ Live: https://reachtoyc.vercel.app
 
 Pick a YC batch and start a **run**. The run finds every company's founders and their likely emails, researches each
 company on the web with your AI model, and writes one personalised cold email per company from your own profile and
-system prompt. You review the drafts, edit them, then copy them or open them in your mail app.
+system prompt. You review and edit the drafts, then send them from your own Gmail (one at a time, or Send all as a
+paced background job with a daily limit), or copy them into your mail app.
 
 ```
 apps/backend   Express + Drizzle ORM (Postgres or embedded PGlite) and the run pipeline

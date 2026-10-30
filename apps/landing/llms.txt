@@ -1,6 +1,6 @@
 # reachtoyc
 
-> Open-source local web app: pick a Y Combinator batch (or paste any company website), and it finds the founders and their emails, researches each company with the user's own AI model (Claude, OpenAI or Gemini), and drafts one personal cold email per company from the user's resume and prompt. The user reviews and sends; nothing is sent automatically.
+> Open-source local web app: pick a Y Combinator batch (or paste any company website), and it finds the founders and their emails, researches each company with the user's own AI model (Claude, OpenAI or Gemini), and drafts one personal cold email per company from the user's resume and prompt. The user reviews the drafts and sends them from their own Gmail (optional, free with a Gmail App Password): one at a time, or Send all as a paced background job with a daily limit. Nothing is sent without the user's click.
 
 If you are an AI agent setting this up for someone, read the full setup guide first. It lists every value to ask the user for, where each key comes from, that they all go in `apps/backend/.env`, the setup and verification commands, and the rule to ask before any paid run.
 

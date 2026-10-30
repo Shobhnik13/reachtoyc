@@ -9,15 +9,15 @@ const STEPS = [
   {n: '01', title: 'Pick a batch', body: 'Any YC batch, from the latest back to 2005. Choose how many companies, or only the ones hiring.'},
   {n: '02', title: 'Find the founders', body: 'Names, roles, LinkedIn and open jobs from YC, with emails from company sites, smart guesses and optional Apify verification.'},
   {n: '03', title: 'Research and write', body: 'Your own AI model reads up on each company and writes one personal email from your resume and your rules.'},
-  {n: '04', title: 'Review and send', body: 'Edit, regenerate, switch founder, copy or open in your mail app. Nothing goes out without you.'}
+  {n: '04', title: 'Review and send', body: 'Edit, regenerate or switch founder, then send from your own Gmail: one at a time, or Send all at a safe daily pace. Nothing goes out without your click.'}
 ];
 
 const FEATURES = [
   {title: 'Your keys, your machine', body: 'Runs locally. API keys live in one .env file and never leave your backend.'},
   {title: 'Claude, OpenAI or Gemini', body: 'Bring whichever model you like; each one researches with its own web search.'},
   {title: 'Emails you can trust', body: 'Every address is labelled verified, unverified, on site or guess, so you know before you send.'},
-  {title: 'Built for iterating', body: 'Regenerate the subject, the body or everything, with a line of extra context. Draft more anytime.'},
-  {title: 'Your voice, not a template', body: 'A Markdown profile and a system prompt decide what gets said and how it sounds.'},
+  {title: 'Send from your Gmail', body: 'Send one email or a whole run straight from your own Gmail, in the background: a few a minute, a daily limit you set, nobody emailed twice. Free with a Gmail App Password.'},
+  {title: 'Any company, not just YC', body: 'Paste a website and the same research, email lookup and writing runs for that one company.'},
   {title: 'Agent-ready setup', body: 'Hand the repo to Claude Code or Codex: AGENTS.md walks them through every key and step.'}
 ];
 
@@ -44,7 +44,7 @@ export default function LandingPage() {
         </Reveal>
         <Reveal delay={160}>
           <p className="lede">
-            Pick a batch. reachtoyc finds every founder and their email, reads up on each company with your own AI, and drafts one personal email per company from your resume. You review it and hit send.
+            Pick a batch. reachtoyc finds every founder and their email, reads up on each company with your own AI, drafts one personal email per company from your resume, and sends it from your own Gmail when you say so.
           </p>
         </Reveal>
         <Reveal delay={240}>
@@ -73,7 +73,7 @@ export default function LandingPage() {
             <div className="preview-stats">
               <span><b>100</b>companies</span>
               <span><b>92</b>drafts</span>
-              <span><b>44</b>verified</span>
+              <span><b>30</b>sent today</span>
             </div>
             <div className="preview-mail">
               <div className="preview-to">
@@ -125,7 +125,7 @@ export default function LandingPage() {
       <section className="section final">
         <Reveal>
           <h2>Start your first run in five minutes.</h2>
-          <p className="lede">Clone it, add one AI key, paste your resume. Free and open source.</p>
+          <p className="lede">Clone it, add one AI key, paste your resume. Free and open source, and sending from your Gmail is free too.</p>
           <div className="cta">
             <StartCta className="btn primary lg" setupLabel="Set it up →" appLabel="Your runs →" />
             <a className="btn lg" href={`${REPO_URL}/blob/main/AGENTS.md`} target="_blank" rel="noopener noreferrer">Setup guide for AI agents</a>

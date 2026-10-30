@@ -82,7 +82,7 @@ export default function HowItWorksPage() {
   return (
     <>
       <h1>How it works</h1>
-      <p className="sub">Pick a YC batch, and a run finds the founders, their emails, researches each company and drafts one personalised email per company from your own profile.</p>
+      <p className="sub">Pick a YC batch (or any company website), and a run finds the founders and their emails, researches each company, drafts one personalised email per company from your own profile, and sends them from your Gmail when you say so.</p>
 
       <section className="panel">
         <h2>Set up with an AI agent</h2>
@@ -135,7 +135,7 @@ export default function HowItWorksPage() {
           <li>Fill in <code>apps/backend/.env</code> with the keys above, then run <code>npm run dev</code> in <code>v2/</code>.</li>
           <li><Link href="/profiles/new">Create a profile</Link>: pick the AI provider and model, paste your resume and experience as Markdown, and write the system prompt that sets the tone and structure of your emails.</li>
           <li><Link href="/runs/new">Start a run</Link>: choose the profile, a YC batch, how many companies, and the filters. Nothing runs until you press Start run.</li>
-          <li>Open the run, review each draft, then copy it or open it in your mail app and mark it sent.</li>
+          <li>Open the run and review each draft. Optional: add <code>GMAIL_USER</code> and <code>GMAIL_APP_PASSWORD</code> to <code>apps/backend/.env</code> to send from your Gmail with <b>Send</b>, <b>Send one</b> or <b>Send all</b> (try <b>Send test to me</b> first). Otherwise copy a draft or open it in your mail app and mark it sent.</li>
         </ol>
       </section>
 
@@ -161,6 +161,7 @@ export default function HowItWorksPage() {
           <li>Apify lookups bill your Apify account, capped by the profile&apos;s max USD per 50 founders.</li>
           <li>Nothing paid starts by itself. Starting a run, resuming, and regenerating all ask first. A backend restart pauses unfinished runs; press Resume to continue.</li>
           <li>Edits to a profile&apos;s prompt or resume apply to the next draft or regenerate, in any run.</li>
+          <li>Sending from your Gmail is free. Send and Send all always ask first; Send all runs as a background job (you can close the tab), one email every 45-120 s, up to your profile&apos;s daily limit. Once today&apos;s limit is used, sending stops until tomorrow; then press Continue sending. The meter in the top bar shows how many are left today.</li>
         </ul>
       </section>
     </>
