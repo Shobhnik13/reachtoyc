@@ -4,7 +4,7 @@ import {useRouter} from 'next/navigation';
 import {useState} from 'react';
 
 import {Spinner} from '@/components/Spinner';
-import {api, DEFAULT_MODELS, type Profile, type Provider} from '@/lib/api';
+import {api, DEFAULT_MODELS, SAFE_DAILY_SENDS, type Profile, type Provider} from '@/lib/api';
 import {toast} from '@/lib/toast';
 
 const PROVIDERS: {value: Provider; label: string}[] = [
@@ -22,6 +22,7 @@ export default function ProfileForm({profile}: {profile?: Profile}) {
     ai_provider: profile?.ai_provider || ('anthropic' as Provider),
     ai_model: profile?.ai_model || DEFAULT_MODELS.anthropic,
     apify_max_usd: String(profile?.apify_max_usd ?? 1),
+    daily_send_limit: String(profile?.daily_send_limit ?? 30),
     resume_markdown: profile?.resume_markdown || '',
     system_prompt: profile?.system_prompt || '',
     subject_template: profile?.subject_template ?? 'looking out for an engineering opportunity - would love to work as an engineer at {company}'
@@ -47,6 +48,7 @@ export default function ProfileForm({profile}: {profile?: Profile}) {
       ai_provider: form.ai_provider,
       ai_model: form.ai_model,
       apify_max_usd: parseFloat(form.apify_max_usd) || 1,
+      daily_send_limit: Math.min(500, Math.max(1, parseInt(form.daily_send_limit) || 30)),
       resume_markdown: form.resume_markdown,
       subject_template: form.subject_template
     };
@@ -101,6 +103,22 @@ export default function ProfileForm({profile}: {profile?: Profile}) {
         <p className="row"><input type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" onChange={onFile} style={{width: 'auto'}} /></p>
         <textarea className="mono" style={{minHeight: 320}} value={form.resume_markdown} onChange={set('resume_markdown')} placeholder={'# Jane Doe\nPortfolio: https://...\nGitHub: https://github.com/...\nResume: https://...\n\n## Experience\n...'} />
         <p className="hint">{form.resume_markdown.length.toLocaleString()} characters</p>
+      </section>
+
+      <section className="panel">
+        <h2>Sending</h2>
+        <label className="f" style={{maxWidth: 260}}>
+          Emails per day
+          <input type="number" min="1" max="500" value={form.daily_send_limit} onChange={set('daily_send_limit')} />
+        </label>
+        <p className="hint">
+          The most emails Send and Send all may send from your Gmail in one day. Once today&apos;s limit is reached, sending stops with an error and the rest wait for tomorrow. Gmail itself allows about 500 a day.
+        </p>
+        {(parseInt(form.daily_send_limit) || 0) > SAFE_DAILY_SENDS ? (
+          <p className="status err">More than {SAFE_DAILY_SENDS} emails a day from a personal Gmail can land your emails in spam or get the account flagged. Start around 20-30 and increase slowly.</p>
+        ) : (
+          <p className="hint">Increasing this to more than {SAFE_DAILY_SENDS} a day can land your emails in spam.</p>
+        )}
       </section>
 
       <section className="panel">

@@ -2,9 +2,10 @@
 
 import {useEffect, useRef, useState} from 'react';
 
+import {refreshMeter} from '@/components/SendMeter';
 import {Spinner} from '@/components/Spinner';
 import {api, bestEmail, EMAIL_LABEL, safeUrl, type Company, type Draft} from '@/lib/api';
-import {toast} from '@/lib/toast';
+import {confirmToast, toast} from '@/lib/toast';
 
 type Part = 'body' | 'subject' | 'all';
 
@@ -21,7 +22,7 @@ function CopyButton({text, label, what, primary}: {text: string; label: string; 
   );
 }
 
-export default function DraftCard({company, serial, onChange, defaultOpen = false}: {company: Company; serial?: number; onChange: (d: Draft) => void; defaultOpen?: boolean}) {
+export default function DraftCard({company, serial, onChange, defaultOpen = false, mailReady = false}: {company: Company; serial?: number; onChange: (d: Draft) => void; defaultOpen?: boolean; mailReady?: boolean}) {
   const draft = company.draft;
   const [subject, setSubject] = useState(draft?.subject || '');
   const [body, setBody] = useState(draft?.body || '');
@@ -72,6 +73,12 @@ export default function DraftCard({company, serial, onChange, defaultOpen = fals
     }
   }
 
+  async function send() {
+    if (dirty) await put({subject, body, to_email: toEmail}, undefined, 'send');
+    const ok = await confirmToast(`Send to ${toEmail}?`, {description: `From your Gmail, as written. This can't be undone.`, confirmLabel: 'Send now'});
+    if (ok) put({send: true}, `Sending to ${toEmail}…`, 'send').then(refreshMeter);
+  }
+
   // Same company, so the email still fits: swap the address and greeting, no AI call
   async function switchTo(founder: {id: number; name: string}) {
     if (dirty) await put({subject, body}, undefined, `founder-${founder.id}`);
@@ -81,6 +88,7 @@ export default function DraftCard({company, serial, onChange, defaultOpen = fals
   const recipient = company.founders.find((f) => f.id === draft?.founder_id);
   const kind = draft?.email_kind || 'none';
   const generated = draft?.status === 'generated';
+  const locked = draft?.send_status === 'queued' || draft?.send_status === 'sending';
   const label = !draft ? 'waiting' : draft.status === 'pending' ? 'writing…' : draft.status === 'failed' ? 'failed' : EMAIL_LABEL[kind];
   const badge = !draft || draft.status === 'pending' ? 'pending' : draft.status === 'failed' ? 'failed' : kind;
   const mailto = `mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -91,7 +99,10 @@ export default function DraftCard({company, serial, onChange, defaultOpen = fals
         {serial ? <span className="serial">{serial}.</span> : null}
         <span className="name">{company.name}</span>
         <span className={`badge ${badge}`}>{label}</span>
-        {draft?.sent ? <span className="badge valid">sent</span> : null}
+        {draft?.send_status === 'queued' ? <span className="badge queued">{draft.send_now ? 'sending soon' : 'queued'}</span> : null}
+        {draft?.send_status === 'sending' ? <span className="badge sending">sending…</span> : null}
+        {draft?.send_status === 'failed' ? <span className="badge failed">send failed</span> : null}
+        {draft?.sent ? <span className="badge valid">{draft.message_id ? 'sent ✓' : 'sent'}</span> : null}
         <span className="meta">
           {recipient?.name || company.founders[0]?.name || ''}
           <br />
@@ -130,28 +141,55 @@ export default function DraftCard({company, serial, onChange, defaultOpen = fals
         {generated ? (
           <>
             {draft.error ? <p className="status err">Last regenerate failed: {draft.error}. Your email is unchanged.</p> : null}
-            <label className="f" style={{marginTop: 12}}>To<input value={toEmail} onChange={(e) => setToEmail(e.target.value)} placeholder="name@company.com" /></label>
+            {draft.send_status === 'failed' && draft.send_error ? <p className="status err">Not sent: {draft.send_error}</p> : null}
+            {locked ? <p className="status muted">Queued to send from your Gmail. Unqueue it to edit.</p> : null}
+            {company.copies?.length ? (
+              <p className="r">
+                <b>Also to</b>
+                {company.copies.map((c, i) => {
+                  const who = company.founders.find((f) => f.id === c.founder_id);
+                  return (
+                    <span key={c.id}>
+                      {i ? ' · ' : ''}{who?.name.split(' ')[0] || c.to_email} ({c.to_email}){' '}
+                      <span className={`badge ${c.sent ? 'valid' : c.send_status === 'failed' ? 'failed' : 'queued'}`}>{c.sent ? 'sent ✓' : c.send_status === 'failed' ? 'failed' : c.send_status === 'sending' ? 'sending…' : 'queued'}</span>
+                    </span>
+                  );
+                })}
+              </p>
+            ) : null}
+            <label className="f" style={{marginTop: 12}}>To<input value={toEmail} readOnly={locked} onChange={(e) => setToEmail(e.target.value)} placeholder="name@company.com" /></label>
             {!draft.to_email ? <p className="hint">No email found for this company. Type the address in To and press Save edits.</p> : null}
             {recipient && recipient.email_guesses.length > 1 && kind === 'guess' ? <p className="hint">Other guesses: {recipient.email_guesses.slice(1).join(', ')}</p> : null}
-            <label className="f" style={{marginTop: 10}}>Subject<input value={subject} onChange={(e) => setSubject(e.target.value)} /></label>
-            <label className="f" style={{marginTop: 10}}>Body<textarea value={body} onChange={(e) => setBody(e.target.value)} style={{minHeight: 340}} /></label>
+            <label className="f" style={{marginTop: 10}}>Subject<input value={subject} readOnly={locked} onChange={(e) => setSubject(e.target.value)} /></label>
+            <label className="f" style={{marginTop: 10}}>Body<textarea value={body} readOnly={locked} onChange={(e) => setBody(e.target.value)} style={{minHeight: 340}} /></label>
           </>
         ) : null}
 
         <div className="acts">
           {generated ? (
             <>
-              <CopyButton primary text={body} label="Copy body" what="body" />
+              {!draft.sent && !locked ? (
+                <button type="button" className="send" disabled={!!busy || !mailReady || !toEmail.trim()} title={mailReady ? '' : 'Set GMAIL_USER and GMAIL_APP_PASSWORD in apps/backend/.env'} onClick={send}>
+                  {busy === 'send' ? <Spinner /> : '✉ '}Send
+                </button>
+              ) : null}
+              {draft.send_status === 'queued' ? <button type="button" className="ghost" disabled={!!busy} onClick={() => put({send: false}, 'Taken out of the send queue', 'unqueue')}>{busy === 'unqueue' ? <Spinner /> : null}Unqueue</button> : null}
+              <CopyButton primary={!mailReady} text={body} label="Copy body" what="body" />
               <CopyButton text={subject} label="Copy subject" what="subject" />
               <CopyButton text={toEmail} label="Copy email" what={toEmail} />
               <a className="btn" href={mailto}>Open in mail app</a>
-              {dirty ? <button type="button" className="save" disabled={!!busy} onClick={() => put({subject, body, to_email: toEmail}, 'Edits saved')}>{busy === 'save' ? <Spinner /> : null}Save edits</button> : null}
-              <button type="button" className={draft.sent ? 'success on' : 'success'} disabled={!!busy} onClick={() => put({sent: !draft.sent}, draft.sent ? `${company.name} marked not sent` : `${company.name} marked sent`, 'sent')}>
-                {busy === 'sent' ? <Spinner /> : draft.sent ? '✓ ' : null}{draft.sent ? 'Sent' : 'Mark sent'}
-              </button>
+              {mailReady && !draft.sent ? <button type="button" className="ghost" disabled={!!busy} onClick={() => put({send_test: true}, 'Test sent to your Gmail', 'test')}>{busy === 'test' ? <Spinner /> : null}Send test to me</button> : null}
+              {dirty && !locked ? <button type="button" className="save" disabled={!!busy} onClick={() => put({subject, body, to_email: toEmail}, 'Edits saved')}>{busy === 'save' ? <Spinner /> : null}Save edits</button> : null}
+              {draft.message_id ? (
+                <span className="badge valid">sent from Gmail{draft.sent_at ? ` · ${new Date(draft.sent_at).toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'})}` : ''}</span>
+              ) : locked ? null : (
+                <button type="button" className={draft.sent ? 'success on' : 'success'} disabled={!!busy} onClick={() => put({sent: !draft.sent}, draft.sent ? `${company.name} marked not sent` : `${company.name} marked sent`, 'sent')} title="For emails you sent yourself, outside the app">
+                  {busy === 'sent' ? <Spinner /> : draft.sent ? '✓ ' : null}{draft.sent ? 'Sent' : 'Mark sent'}
+                </button>
+              )}
             </>
           ) : null}
-          {draft && draft.status !== 'pending' ? (
+          {draft && draft.status !== 'pending' && !locked && !draft.sent ? (
             <button type="button" className={`ai ${regenOpen ? 'on' : ''}`} disabled={!!busy} onClick={() => setRegenOpen((o) => !o)}>✦ Regenerate</button>
           ) : null}
         </div>

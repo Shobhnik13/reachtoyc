@@ -1,6 +1,6 @@
 'use strict';
 
-const {and, asc, eq, inArray, sql} = require('drizzle-orm');
+const {and, asc, eq, inArray, isNotNull, isNull, sql} = require('drizzle-orm');
 
 const utilsService = require('app/services/utils');
 
@@ -60,9 +60,18 @@ async function getCompanies(params) {
 
   let ids = rows.map((r) => r.id);
   let founderRows = await database.db().select().from(founders).where(and(inArray(founders.company_id, ids), eq(founders.active, true))).orderBy(asc(founders.id));
-  let draftRows = await database.db().select().from(drafts).where(inArray(drafts.company_id, ids));
+  let draftRows = await database
+    .db()
+    .select()
+    .from(drafts)
+    .where(and(inArray(drafts.company_id, ids), isNull(drafts.parent_id)));
+  let copyRows = await database
+    .db()
+    .select({id: drafts.id, company_id: drafts.company_id, founder_id: drafts.founder_id, to_email: drafts.to_email, send_status: drafts.send_status, sent: drafts.sent, send_error: drafts.send_error})
+    .from(drafts)
+    .where(and(inArray(drafts.company_id, ids), isNotNull(drafts.parent_id), eq(drafts.active, true)));
 
-  return _collate(rows, utilsService.sanitizeSqlResult(founderRows), utilsService.sanitizeSqlResult(draftRows));
+  return _collate(rows, utilsService.sanitizeSqlResult(founderRows), utilsService.sanitizeSqlResult(draftRows), utilsService.sanitizeSqlResult(copyRows));
 }
 
 async function getCompany(params) {
@@ -142,11 +151,12 @@ function _filters(params) {
   return filters;
 }
 
-function _collate(rows, founderRows, draftRows) {
+function _collate(rows, founderRows, draftRows, copyRows) {
   return rows.map((c) => ({
     ...c,
     founders: founderRows.filter((f) => f.company_id === c.id),
-    draft: draftRows.find((d) => d.company_id === c.id) || null
+    draft: draftRows.find((d) => d.company_id === c.id) || null,
+    copies: copyRows.filter((d) => d.company_id === c.id)
   }));
 }
 

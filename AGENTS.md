@@ -29,6 +29,7 @@ Repo: https://github.com/Shobhnik13/reachtoyc. Human-oriented docs: `README.md`.
 | Apify token | No (recommended for better emails) | https://console.apify.com/settings/integrations → API token | `APIFY_TOKEN` in `apps/backend/.env`. When set, every run verifies founder emails with Apify (billed to their Apify account, capped per 50 founders by the profile's max USD). |
 | Their profile in Markdown | Yes | Their resume, links (portfolio, GitHub, resume PDF), every job with results and numbers, side projects with links | The app's profile (`resume_markdown`), via the UI or API below. Not a repo file. |
 | How emails should read | No | Their own instructions: tone, length, structure, closing line | The profile's `system_prompt`. Leave empty to use the built-in default. |
+| Gmail address and App Password | No (needed only to send from the app) | Their Gmail; App Password from https://myaccount.google.com/apppasswords after turning on 2-step verification | `GMAIL_USER` and `GMAIL_APP_PASSWORD` in `apps/backend/.env`. Optional: `SEND_FROM_NAME`, `SEND_GAP_SECONDS` (default `45-120`). The daily limit is the profile's `daily_send_limit` (default 30; above 50 risks spam). |
 | Subject line | No | e.g. `looking out for an engineering opportunity - would love to work as an engineer at {company}` | The profile's `subject_template`. `{company}` and `{first_name}` are filled in by code. Empty = the AI writes subjects. |
 | Port | No | Only if 4100 is taken | `PORT` in `apps/backend/.env`, and `BACKEND_URL=http://127.0.0.1:<port>` in `apps/frontend/.env.local` |
 
@@ -40,6 +41,8 @@ ANTHROPIC_API_KEY=sk-ant-...
 OPENAI_API_KEY=
 GEMINI_API_KEY=
 APIFY_TOKEN=apify_api_...
+GMAIL_USER=you@gmail.com
+GMAIL_APP_PASSWORD=abcdefghijklmnop
 PORT=4100
 ```
 
@@ -106,6 +109,12 @@ For Neon URLs, replace `sslmode=require` with `sslmode=verify-full` (same securi
   same workflow for one non-YC company. The AI researches it, emails are found and checked with Apify, and one email is
   written. Needs the AI key and `APIFY_TOKEN` (`keys_missing` otherwise). If no email is found the draft is still
   written and the user types the address. About 2 AI calls; ask the user first.
+- **Sending (irreversible: always ask the user first, and suggest `send_test` before the first real send).** With the
+  Gmail keys set: `PUT /drafts/:id {"send": true}` sends one draft; `PUT /runs/:id {"send_all": true, "include_guesses": false, "include_cofounders": false}`
+  creates a background send job (stored in `send_jobs`, returned as `run.send_job` with `status` and `progress`; poll `GET /runs/:id`) that queues what fits in today's limit (profile `daily_send_limit`; `daily_limit_reached` once it's used up; one email every 45-120 s, nobody emailed twice); `{"sending": "pause" | "resume" | "cancel"}`
+  controls the queue; `PUT /drafts/:id {"send_test": true}` sends the draft to the user's own Gmail. `GET /settings`
+  → `mail` has `sent_today`, `queued` and `daily_limit` for "how many left today". Leftovers after the limit stay
+  unsent; the next day `send_all` again continues where it stopped.
 - **Regenerate all** at the top of a run rewrites every unsent draft (one AI call each; ask the user first). API:
   `PUT /runs/:id {"status": "queued", "regenerate": true}`.
 - **Regenerate** on a draft: email body only, subject only, or everything, with optional 1-2 lines of extra context.
@@ -145,7 +154,7 @@ All responses: `{code, error, message, data}`. Updates are `PUT`; no `DELETE`/`P
 | `GET /healthchecks` | Liveness |
 | `GET /settings` | Which env keys are set (booleans only), database type |
 | `GET /batches` | YC batches with company counts |
-| `POST /profiles`, `GET /profiles`, `GET/PUT /profiles/:id` | `name`, `ai_provider`, `ai_model`, `resume_markdown`, `system_prompt`, `subject_template`, `apify_max_usd` |
+| `POST /profiles`, `GET /profiles`, `GET/PUT /profiles/:id` | `name`, `ai_provider`, `ai_model`, `resume_markdown`, `system_prompt`, `subject_template`, `apify_max_usd`, `daily_send_limit` |
 | `POST /runs`, `GET /runs`, `GET/PUT /runs/:id` | Start (`profile_id`, `batch`, `company_limit`, `hiring_only`); `PUT` `status: canceled` / `status: queued` (+ `add_companies`) |
 | `GET /companies?run_id=` | Companies with founders and draft; `statuses`, `q`, `sent`, `limit`, `offset`; returns `total` |
 | `GET /drafts`, `GET/PUT /drafts/:id` | Edit `subject`, `body`, `to_email`, `sent`; `founder_id` switches recipient; `status: pending` + `part` (`all`/`body`/`subject`) + `instructions` regenerates |

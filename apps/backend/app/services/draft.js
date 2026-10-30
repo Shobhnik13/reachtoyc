@@ -1,13 +1,16 @@
 'use strict';
 
 const aiService = require('app/services/ai');
+const mailerService = require('app/services/mailer');
 const profileService = require('app/services/profile');
+const senderService = require('app/services/sender');
 const wrapperService = require('app/services/wrapper');
 
 const companyModel = require('app/models/company');
 const draftModel = require('app/models/draft');
 const runModel = require('app/models/run');
 
+const config = require('app/configs/config');
 const status = require('app/configs/status');
 
 const RANK = {manual: -1, valid: 0, unknown: 1, site: 2, guess: 3, none: 4};
@@ -44,6 +47,19 @@ async function updateDraft(params) {
 
   if (draft.status === 'pending') {
     throw new Error('draft_edit_fail');
+  }
+
+  if (params.sendTest) {
+    return _sendTest(draft);
+  }
+
+  if (params.hasOwnProperty('send')) {
+    return _queueSend(draft, params.send);
+  }
+
+  // Text and recipient are frozen while the email is queued or going out
+  if (['queued', 'sending'].includes(draft.send_status)) {
+    throw new Error('draft_locked');
   }
 
   if ((params.status && params.status !== 'pending') || (params.part && !PARTS.includes(params.part))) {
@@ -241,6 +257,52 @@ function buildPrompt(company, recipient, options = {}) {
   }
 
   return lines.filter((l) => l !== null).join('\n');
+}
+
+// send: true queues it ahead of any "Send all" queue; send: false takes it back out
+async function _queueSend(draft, send) {
+  if (!send) {
+    if (draft.send_status === 'queued') {
+      await draftModel.updateDraft({draftId: draft.id, sendStatus: 'unsent', sendNow: false, queuedAt: null, sendError: null});
+    }
+
+    return _respond(draft.id);
+  }
+
+  if (!mailerService.isConfigured()) {
+    throw new Error('mail_missing');
+  }
+
+  if (draft.send_status === 'sending' || (await senderService.whyNotSendable({...draft, sent: draft.sent}))) {
+    throw new Error('draft_not_sendable');
+  }
+
+  let run = await runModel.getRun({runId: draft.run_id});
+
+  if (draft.send_status !== 'queued' && (await senderService.remainingToday(run.daily_send_limit)) < 1) {
+    throw new Error('daily_limit_reached');
+  }
+
+  await draftModel.updateDraft({draftId: draft.id, sendStatus: 'queued', sendNow: true, queuedAt: new Date(), sendError: null});
+  await runModel.updateRun({runId: draft.run_id, sendPaused: false});
+  senderService.nudge();
+
+  return _respond(draft.id);
+}
+
+// Sends this draft to the user's own Gmail with a [test] subject; the draft itself is unchanged
+async function _sendTest(draft) {
+  if (!mailerService.isConfigured()) {
+    throw new Error('mail_missing');
+  }
+
+  if (draft.status !== 'generated') {
+    throw new Error('draft_not_sendable');
+  }
+
+  await mailerService.sendMail({to: config.MAIL.USER || 'me@example.com', subject: `[test] ${draft.subject}`, body: `(Test of the email that would go to ${draft.to_email || 'no address yet'})\n\n${draft.body}`});
+
+  return _respond(draft.id);
 }
 
 async function _respond(draftId) {

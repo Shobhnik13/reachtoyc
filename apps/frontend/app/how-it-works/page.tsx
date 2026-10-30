@@ -44,6 +44,18 @@ const KEYS: {name: string; need: string; what: string; where: React.ReactNode}[]
     need: 'Optional',
     what: 'Looks up verified founder emails. Without it you get emails published on company sites plus pattern guesses (first guess right about 80% of the time).',
     where: <a href="https://console.apify.com/settings/integrations" target="_blank" rel="noopener">console.apify.com → Settings → Integrations</a>
+  },
+  {
+    name: 'GMAIL_USER',
+    need: 'Optional',
+    what: 'Your Gmail address. Needed to send drafts from the app (Send, Send all). Without it you copy or open drafts in your mail app.',
+    where: <>Your Gmail address, e.g. you@gmail.com</>
+  },
+  {
+    name: 'GMAIL_APP_PASSWORD',
+    need: 'Optional',
+    what: 'A 16-character App Password (not your normal password) that lets the app send from your Gmail. Free.',
+    where: <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">Turn on 2-step verification, then myaccount.google.com/apppasswords</a>
   }
 ];
 
@@ -53,7 +65,8 @@ const STEPS: {title: string; body: string}[] = [
   {title: 'Find emails', body: 'Checks the company website for published addresses, builds pattern guesses (first@, first.last@, ...) and, if Apify is on, looks up verified emails 50 founders at a time, capped at your USD limit per lookup.'},
   {title: 'Research and write', body: 'For each company, one AI call: the model searches the web for what the company builds and recent news, picks one real detail as the hook, and writes the email from your system prompt and profile Markdown. Sources are saved with the draft.'},
   {title: 'Other companies', body: 'Run for a different company (on the Runs page) does the same for any website: the AI researches the company and its founders, emails are checked with Apify, and one email is written. You can also enter the email yourself. Needs your AI key and APIFY_TOKEN.'},
-  {title: 'Review', body: 'Edit the recipient, subject or body, regenerate, write to another founder, copy, open in your mail app, mark sent, or export CSV.'}
+  {title: 'Review', body: 'Edit the recipient, subject or body, regenerate, write to another founder, copy, open in your mail app, mark sent, or export CSV.'},
+  {title: 'Send', body: 'With GMAIL_USER and GMAIL_APP_PASSWORD set, Send mails one draft from your Gmail and Send all queues a whole run: one email every 45-120 seconds, up to your profile\'s daily limit (30 by default; once it\'s reached, sending stops with an error until tomorrow), pattern guesses held back unless you include them, and nobody emailed twice. Pause, resume or cancel anytime. Send test to me shows you the email in your own inbox first.'}
 ];
 
 export default function HowItWorksPage() {

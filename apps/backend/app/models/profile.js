@@ -21,6 +21,7 @@ async function createProfile(params) {
     system_prompt: params.systemPrompt,
     subject_template: params.subjectTemplate || ''
   };
+  params.dailySendLimit ? (_insert.daily_send_limit = params.dailySendLimit) : null;
   params.hasOwnProperty('apifyMaxUsd') ? (_insert.apify_max_usd = params.apifyMaxUsd) : null;
 
   let result = await database.db().insert(profiles).values(_insert).returning({id: profiles.id});
@@ -71,6 +72,7 @@ async function updateProfile(params) {
   params.hasOwnProperty('resumeMarkdown') ? (_update.resume_markdown = params.resumeMarkdown) : null;
   params.systemPrompt ? (_update.system_prompt = params.systemPrompt) : null;
   params.hasOwnProperty('subjectTemplate') ? (_update.subject_template = params.subjectTemplate) : null;
+  params.dailySendLimit ? (_update.daily_send_limit = params.dailySendLimit) : null;
 
   if (params.hasOwnProperty('active')) {
     _update.active = params.active;

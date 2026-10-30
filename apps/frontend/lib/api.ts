@@ -10,6 +10,7 @@ export interface Profile {
   resume_markdown: string;
   system_prompt: string;
   subject_template: string;
+  daily_send_limit: number;
   has_ai_key: boolean;
   ai_key_env: string;
   has_apify_token: boolean;
@@ -38,7 +39,40 @@ export interface Run {
   stats: {
     companies: {pending: number; scraped: number; skipped: number; failed: number};
     drafts: {pending: number; generated: number; failed: number; sent: number};
+    send: {unsent: number; queued: number; sending: number; sent: number; failed: number};
+    ready: Partial<Record<EmailKind, number>>;
   };
+  send_paused: boolean;
+  daily_send_limit: number;
+  send_job?: SendJob | null;
+}
+
+export interface SendJob {
+  id: number;
+  status: 'pending' | 'preparing' | 'ready' | 'failed' | 'canceled';
+  total: number;
+  over_limit: number;
+  error: string | null;
+  include_guesses: boolean;
+  include_cofounders: boolean;
+  created_at: string;
+  progress: {queued: number; sending: number; sent: number; failed: number; unsent: number};
+}
+
+export interface MailStatus {
+  configured: boolean;
+  phase: 'idle' | 'waiting' | 'sending';
+  next_at: string | null;
+  sent_today: number;
+  queued: number;
+  daily_limit: number;
+  from: string | null;
+}
+
+export interface Settings {
+  database: 'pglite' | 'postgres';
+  keys: Record<string, boolean>;
+  mail: MailStatus;
 }
 
 export interface Founder {
@@ -71,6 +105,10 @@ export interface Draft {
   error: string | null;
   sent: boolean;
   sent_at: string | null;
+  send_status: 'unsent' | 'queued' | 'sending' | 'sent' | 'failed';
+  send_now: boolean;
+  message_id: string | null;
+  send_error: string | null;
   company?: {name: string; slug: string; batch: string};
 }
 
@@ -94,6 +132,7 @@ export interface Company {
   error: string | null;
   founders: Founder[];
   draft: Draft | null;
+  copies: {id: number; founder_id: number | null; to_email: string; send_status: Draft['send_status']; sent: boolean; send_error: string | null}[];
 }
 
 export type EmailKind = 'manual' | 'valid' | 'unknown' | 'site' | 'guess' | 'none';
@@ -101,6 +140,9 @@ export type EmailKind = 'manual' | 'valid' | 'unknown' | 'site' | 'guess' | 'non
 export const EMAIL_LABEL: Record<EmailKind, string> = {manual: 'you entered', valid: 'verified', unknown: 'unverified', site: 'on site', guess: 'guess', none: 'no email'};
 
 export const ACTIVE: RunStatus[] = ['queued', 'scraping', 'enriching', 'drafting'];
+
+// Above this many emails a day from a personal Gmail, spam filters start to notice
+export const SAFE_DAILY_SENDS = 50;
 
 export const DEFAULT_MODELS: Record<Provider, string> = {anthropic: 'claude-opus-5-5', openai: 'gpt-5.5', gemini: 'gemini-3.5-flash'};
 
@@ -148,6 +190,17 @@ export function bestEmail(f: Founder): {email: string; kind: EmailKind} {
   if (f.emails_found?.length) return {email: f.emails_found[0], kind: 'site'};
   if (f.email_guesses?.length) return {email: f.email_guesses[0], kind: 'guess'};
   return {email: '', kind: 'none'};
+}
+
+// Same rule as the backend: replace the old recipient's first name in the greeting line only, keeping its casing
+export function swapGreeting(body: string, oldName: string, newName: string) {
+  const oldFirst = oldName.trim().split(/\s+/)[0];
+  const newFirst = newName.trim().split(/\s+/)[0];
+  if (!body || !oldFirst || !newFirst) return body;
+  const lines = body.split('\n');
+  const escaped = oldFirst.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  lines[0] = lines[0].replace(new RegExp(`\\b${escaped}\\b`, 'i'), (m) => (m === m.toLowerCase() ? newFirst.toLowerCase() : newFirst));
+  return lines.join('\n');
 }
 
 export const safeUrl = (u?: string | null) => (u && /^https?:\/\//i.test(u) ? u : undefined);

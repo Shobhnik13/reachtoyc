@@ -1,5 +1,6 @@
 'use strict';
 
+const {sql} = require('drizzle-orm');
 const {boolean, index, integer, jsonb, pgEnum, pgTable, real, text, timestamp, uniqueIndex} = require('drizzle-orm/pg-core');
 
 const aiProvider = pgEnum('ai_provider', ['anthropic', 'openai', 'gemini']);
@@ -7,6 +8,8 @@ const runStatus = pgEnum('run_status', ['queued', 'scraping', 'enriching', 'draf
 const companyStatus = pgEnum('company_status', ['pending', 'scraped', 'skipped', 'failed']);
 const draftStatus = pgEnum('draft_status', ['pending', 'generated', 'failed']);
 const runSource = pgEnum('run_source', ['yc', 'url']);
+const sendStatus = pgEnum('send_status', ['unsent', 'queued', 'sending', 'sent', 'failed']);
+const sendJobStatus = pgEnum('send_job_status', ['pending', 'preparing', 'ready', 'failed', 'canceled']);
 
 const base = () => ({
   active: boolean('active').notNull().default(true),
@@ -24,6 +27,7 @@ const profiles = pgTable('profiles', {
   resume_markdown: text('resume_markdown').notNull().default(''),
   system_prompt: text('system_prompt').notNull(),
   subject_template: text('subject_template').notNull().default(''),
+  daily_send_limit: integer('daily_send_limit').notNull().default(30),
   ...base()
 });
 
@@ -46,6 +50,7 @@ const runs = pgTable(
     system_prompt: text('system_prompt').notNull(),
     resume_markdown: text('resume_markdown').notNull(),
     error: text('error'),
+    send_paused: boolean('send_paused').notNull().default(false),
     started_at: timestamp('started_at', {withTimezone: true}),
     finished_at: timestamp('finished_at', {withTimezone: true}),
     ...base()
@@ -103,6 +108,27 @@ const founders = pgTable(
   (t) => [index('idx_founders_company_id').on(t.company_id)]
 );
 
+// A "Send all" request: created instantly, prepared in the background, then its drafts go through the send queue
+const sendJobs = pgTable(
+  'send_jobs',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    run_id: integer('run_id')
+      .notNull()
+      .references(() => runs.id),
+    include_guesses: boolean('include_guesses').notNull().default(false),
+    include_cofounders: boolean('include_cofounders').notNull().default(false),
+    status: sendJobStatus('status').notNull().default('pending'),
+    total: integer('total').notNull().default(0),
+    over_limit: integer('over_limit').notNull().default(0),
+    error: text('error'),
+    started_at: timestamp('started_at', {withTimezone: true}),
+    finished_at: timestamp('finished_at', {withTimezone: true}),
+    ...base()
+  },
+  (t) => [index('idx_send_jobs_run_id').on(t.run_id), index('idx_send_jobs_status').on(t.status)]
+);
+
 const drafts = pgTable(
   'drafts',
   {
@@ -114,6 +140,8 @@ const drafts = pgTable(
       .notNull()
       .references(() => companies.id),
     founder_id: integer('founder_id').references(() => founders.id),
+    // Set on a co-founder copy: same email as the main draft, with that co-founder's name in the greeting
+    parent_id: integer('parent_id').references(() => drafts.id),
     to_email: text('to_email').notNull().default(''),
     email_kind: text('email_kind').notNull().default('none'),
     subject: text('subject').notNull().default(''),
@@ -125,9 +153,22 @@ const drafts = pgTable(
     error: text('error'),
     sent: boolean('sent').notNull().default(false),
     sent_at: timestamp('sent_at', {withTimezone: true}),
+    send_status: sendStatus('send_status').notNull().default('unsent'),
+    send_now: boolean('send_now').notNull().default(false),
+    queued_at: timestamp('queued_at', {withTimezone: true}),
+    message_id: text('message_id'),
+    send_error: text('send_error'),
+    send_job_id: integer('send_job_id').references(() => sendJobs.id),
     ...base()
   },
-  (t) => [uniqueIndex('idx_drafts_company_id').on(t.company_id), index('idx_drafts_run_id').on(t.run_id), index('idx_drafts_status').on(t.status)]
+  (t) => [
+    uniqueIndex('idx_drafts_company_id')
+      .on(t.company_id)
+      .where(sql`${t.parent_id} is null`),
+    index('idx_drafts_parent_id').on(t.parent_id),
+    index('idx_drafts_run_id').on(t.run_id),
+    index('idx_drafts_status').on(t.status)
+  ]
 );
 
-module.exports = {aiProvider, runStatus, companyStatus, draftStatus, runSource, profiles, runs, companies, founders, drafts};
+module.exports = {aiProvider, runStatus, companyStatus, draftStatus, runSource, sendStatus, sendJobStatus, sendJobs, profiles, runs, companies, founders, drafts};

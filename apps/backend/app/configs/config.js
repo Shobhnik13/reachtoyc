@@ -60,4 +60,21 @@ Rules:
 - Never invent facts about the company or the candidate. If research finds little, use the company's one-liner.`
 };
 
-module.exports = {ENV, SERVER, DATABASE, KEYS, CACHE, PIPELINE, AI};
+const [gapMin, gapMax] = String(process.env.SEND_GAP_SECONDS || '45-120')
+  .split('-')
+  .map((n) => parseInt(n));
+
+// Sending through the user's own Gmail (SMTP + App Password). Tests use a fake transport that never sends.
+const MAIL = {
+  USER: process.env.GMAIL_USER || '',
+  APP_PASSWORD: (process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, ''),
+  FROM_NAME: process.env.SEND_FROM_NAME || '',
+  HOST: 'smtp.gmail.com',
+  PORT: 465,
+  GAP_MIN_MS: (Number.isFinite(gapMin) ? gapMin : 45) * 1000,
+  GAP_MAX_MS: (Number.isFinite(gapMax) ? gapMax : Number.isFinite(gapMin) ? gapMin : 120) * 1000,
+  FAKE: ENV === 'test',
+  AUTOSEND: ENV !== 'test'
+};
+
+module.exports = {ENV, SERVER, DATABASE, KEYS, CACHE, PIPELINE, AI, MAIL};

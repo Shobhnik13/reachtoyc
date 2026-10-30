@@ -33,6 +33,8 @@ async function updateDraft(req, res, next) {
   req.body.status ? (draftParams.status = String(req.body.status)) : null;
   req.body.part ? (draftParams.part = String(req.body.part)) : null;
   req.body.instructions ? (draftParams.instructions = String(req.body.instructions).trim().slice(0, 500)) : null;
+  req.body.hasOwnProperty('send') ? (draftParams.send = !!req.body.send) : null;
+  req.body.send_test ? (draftParams.sendTest = true) : null;
 
   let result = await draftService.updateDraft(draftParams);
   return res.json(result);

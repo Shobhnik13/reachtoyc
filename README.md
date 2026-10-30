@@ -42,6 +42,7 @@ You need Node 22 or newer, a Postgres database (or none, see `pglite` below) and
    | `DATABASE_URL` | Yes | Postgres connection string (Neon, Supabase, local...). Use `pglite://./.data` for a built-in local database with no setup. |
    | `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY` | One of them | The provider your profile uses. It researches each company and writes the email. |
    | `APIFY_TOKEN` | Optional | Verified founder email lookups. |
+   | `GMAIL_USER` / `GMAIL_APP_PASSWORD` | Optional | Send drafts from your own Gmail (free). See "Sending from your Gmail". |
    | `PORT` | Optional | Backend port, default `4100`. The frontend reads `BACKEND_URL` (default `http://127.0.0.1:4100`). |
 
    All credentials live only in `apps/backend/.env`, which is gitignored. They are never stored in the database or
@@ -154,6 +155,44 @@ in mail app, mark sent). Only public `http(s)` websites are accepted. API: `POST
 
 The app has a light and a dark theme (toggle at the top right; the first visit follows your system setting),
 toast notifications for every action, and loaders on every request.
+
+### Sending from your Gmail
+
+Optional and free. Add to `apps/backend/.env`:
+
+```
+GMAIL_USER=you@gmail.com
+GMAIL_APP_PASSWORD=abcd efgh ijkl mnop   # Google Account → 2-step verification on → App passwords
+SEND_FROM_NAME=Your Name                 # optional
+SEND_GAP_SECONDS=45-120                  # optional, random gap between sends
+```
+
+- **Send** on a draft mails it right away (after a confirm). **Send test to me** mails it to your own Gmail first.
+- **Emails per day** is set on each profile (default 30). More than 50 a day from a personal Gmail can land your emails
+  in spam. Once today's limit is reached (counted from midnight), Send and Send all stop with an error; nothing waits
+  overnight.
+- The **meter in the top bar** shows emails sent today against your limit ("✉ 12/70 today · 58 left") and turns red
+  when the limit is reached; it resets at midnight.
+- **✉ Send one** on a run lets you pick a company and a person from it (switching person swaps only the address and
+  greeting, no AI call) and sends that email right away.
+- **✉ Send all** on a run shows what's ready by email source, holds pattern guesses back unless you tick them, and
+  queues only what fits in today's limit; the rest stay unsent for tomorrow. The next day the button reads
+  **Continue sending (N left)** and picks up where it stopped. Send all emails one person per company (the draft's
+  recipient); tick **also send to co-founders** to give every other founder with an address their own copy (same email,
+  their name in the greeting, no AI call; each counts toward the limit). One email goes out every 45-120 s.
+  **Pause**, **Resume** and **Cancel queue** sit in the queue bar.
+- Emails are plain text, sent through Gmail's own servers, so they appear in your Sent folder. Nobody gets two emails:
+  addresses and companies already emailed (sent from the app or marked sent) are skipped.
+- **Send all is a background job** stored in Postgres (`send_jobs`): the click returns at once, the job prepares the
+  queue in the background (progress shows as "Preparing emails… N queued so far"), and the send worker mails them one
+  by one. You can close the tab; it keeps going while the backend runs. After a restart an unfinished job resumes
+  preparing, with sending paused until you press Resume.
+- Queued drafts are locked for editing. After a backend restart the queue stays paused until you press Resume, and an
+  email cut off mid-send is marked failed rather than resent (check Gmail's Sent folder).
+- Bounces arrive in your inbox as "Mail Delivery Subsystem" emails; the app doesn't read your inbox yet.
+
+API: `PUT /drafts/:id {"send": true}` (or `false` to unqueue), `{"send_test": true}`;
+`PUT /runs/:id {"send_all": true, "include_guesses": false}`, `{"sending": "pause" | "resume" | "cancel"}`.
 
 ### Where your data lives
 

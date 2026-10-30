@@ -80,7 +80,8 @@ test.describe('2. Runs, companies and drafts', () => {
     assert.equal(r.ai_model, 'claude-opus-5-5');
     assert.equal(r.resume_chars, data.profile.resume_markdown.length);
     assert.equal(r.resume_markdown, undefined);
-    assert.deepEqual(r.stats, {companies: {pending: 0, scraped: 0, skipped: 0, failed: 0}, drafts: {pending: 0, generated: 0, failed: 0, sent: 0}});
+    assert.deepEqual(r.stats, {companies: {pending: 0, scraped: 0, skipped: 0, failed: 0}, drafts: {pending: 0, generated: 0, failed: 0, sent: 0}, send: {unsent: 0, queued: 0, sending: 0, sent: 0, failed: 0}, ready: {}});
+    assert.equal(r.send_paused, false);
   });
 
   test(`${++seq}. PUT /runs/:id queued while active -> run_edit_fail`, async () => {

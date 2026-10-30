@@ -16,6 +16,8 @@ const cors = require('cors');
 const express = require('express');
 
 const pipelineService = require('app/services/pipeline');
+const sendJobService = require('app/services/sendJob');
+const senderService = require('app/services/sender');
 
 const config = require('app/configs/config');
 const database = require('app/configs/database');
@@ -61,6 +63,10 @@ async function start(port = config.SERVER.PORT) {
   if (config.PIPELINE.AUTOSTART) {
     let interrupted = await pipelineService.interruptActiveRuns();
     interrupted ? console.log(`Marked ${interrupted} unfinished run(s)/draft(s) as interrupted; resume them from the UI`) : null;
+    let stuck = await senderService.interruptSending();
+    stuck ? console.log(`${stuck} email(s) were mid-send at shutdown; check Gmail Sent before resending`) : null;
+    let jobs = await sendJobService.resumeOpenJobs();
+    jobs ? console.log(`Resumed preparing ${jobs} send job(s); sending stays paused until you press Resume`) : null;
   }
 
   return server;

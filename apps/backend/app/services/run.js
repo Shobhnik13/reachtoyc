@@ -1,15 +1,19 @@
 'use strict';
 
+const mailerService = require('app/services/mailer');
 const pipelineService = require('app/services/pipeline');
 const profileService = require('app/services/profile');
-const wrapperService = require('app/services/wrapper');
+const sendJobService = require('app/services/sendJob');
+const senderService = require('app/services/sender');
 const webService = require('app/services/web');
+const wrapperService = require('app/services/wrapper');
 const ycService = require('app/services/yc');
 
 const companyModel = require('app/models/company');
 const draftModel = require('app/models/draft');
 const founderModel = require('app/models/founder');
 const runModel = require('app/models/run');
+const sendJobModel = require('app/models/sendJob');
 
 const config = require('app/configs/config');
 const status = require('app/configs/status');
@@ -87,6 +91,14 @@ async function updateRun(params) {
 
   let active = pipelineService.ACTIVE_STATUSES.includes(run.status);
 
+  if (params.sendAll) {
+    return _sendAll(run, params.includeGuesses, params.includeCofounders);
+  }
+
+  if (params.sending) {
+    return _controlSending(run, params.sending);
+  }
+
   if (params.status === 'canceled') {
     if (!active) {
       throw new Error('run_edit_fail');
@@ -105,7 +117,7 @@ async function updateRun(params) {
     let companyLimit = params.addCompanies ? run.stats.companies.scraped + params.addCompanies : null;
 
     if (params.regenerate) {
-      await draftModel.updateDrafts({runId: run.id, fromStatuses: ['generated', 'failed'], sent: false, status: 'pending'});
+      await draftModel.updateDrafts({runId: run.id, fromStatuses: ['generated', 'failed'], sent: false, sendStatuses: ['unsent', 'failed'], status: 'pending'});
     }
 
     await companyModel.updateCompanies({runId: run.id, fromStatus: 'failed', status: 'pending'});
@@ -167,6 +179,44 @@ async function _createUrlRun(params) {
   return _respond(runId);
 }
 
+// Creates a send job and returns at once; the job prepares the queue in the background (see services/sendJob.js)
+async function _sendAll(run, includeGuesses, includeCofounders) {
+  if (!mailerService.isConfigured()) {
+    throw new Error('mail_missing');
+  }
+
+  if ((await senderService.remainingToday(run.daily_send_limit)) < 1) {
+    throw new Error('daily_limit_reached');
+  }
+
+  if ((await sendJobModel.getSendJobs({runId: run.id, statuses: sendJobService.OPEN_STATUSES})).length) {
+    throw new Error('send_job_running');
+  }
+
+  let sendJobId = await sendJobModel.createSendJob({runId: run.id, includeGuesses, includeCofounders});
+  await runModel.updateRun({runId: run.id, sendPaused: false});
+  sendJobService.start(sendJobId);
+
+  return _respond(run.id);
+}
+
+async function _controlSending(run, action) {
+  if (action === 'pause') {
+    await runModel.updateRun({runId: run.id, sendPaused: true});
+  } else if (action === 'resume') {
+    await runModel.updateRun({runId: run.id, sendPaused: false});
+    senderService.nudge();
+  } else if (action === 'cancel') {
+    await sendJobService.cancelForRun({runId: run.id});
+    await draftModel.updateSendStatuses({runId: run.id, fromSendStatuses: ['queued'], sendStatus: 'unsent', sendError: null});
+    await runModel.updateRun({runId: run.id, sendPaused: false});
+  } else {
+    throw new Error('input_invalid');
+  }
+
+  return _respond(run.id);
+}
+
 async function _respond(runId) {
   let result = await runModel.getRun({runId});
 
@@ -176,6 +226,7 @@ async function _respond(runId) {
 
   let response = status.getStatus('success');
   response.data.run = _public(result);
+  response.data.run.send_job = (await sendJobModel.getSendJobs({runId, limit: 1}))[0] || null;
   return response;
 }
 

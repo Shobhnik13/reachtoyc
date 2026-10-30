@@ -36,6 +36,34 @@
       "when": 1793287697404,
       "tag": "0004_url_runs",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793336481550,
+      "tag": "0005_sending",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793336996512,
+      "tag": "0006_daily_send_limit",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793337746857,
+      "tag": "0007_cofounder_copies",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793338076406,
+      "tag": "0008_send_jobs",
+      "breakpoints": true
     }
   ]
 }

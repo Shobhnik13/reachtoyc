@@ -53,11 +53,14 @@ async function getRun(req, res, next) {
 
 // eslint-disable-next-line no-unused-vars
 async function updateRun(req, res, next) {
-  if (!req.body.status) {
+  if (!req.body.status && !req.body.send_all && !req.body.sending) {
     throw new Error('input_missing');
   }
 
-  let runParams = {runId: parseInt(req.params.run_id), status: String(req.body.status)};
+  let runParams = {runId: parseInt(req.params.run_id)};
+  req.body.status ? (runParams.status = String(req.body.status)) : null;
+  req.body.send_all ? ((runParams.sendAll = true), (runParams.includeGuesses = !!req.body.include_guesses), (runParams.includeCofounders = !!req.body.include_cofounders)) : null;
+  req.body.sending ? (runParams.sending = String(req.body.sending)) : null;
   req.body.add_companies ? (runParams.addCompanies = parseInt(req.body.add_companies)) : null;
   req.body.regenerate ? (runParams.regenerate = true) : null;
 

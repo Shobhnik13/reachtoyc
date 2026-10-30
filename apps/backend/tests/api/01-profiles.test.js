@@ -54,6 +54,7 @@ test.describe('1. Profiles', () => {
     assert.equal(p.resume_markdown, data.profile.resume_markdown);
     assert.equal(p.has_ai_key, true);
     assert.equal(p.ai_key_env, 'ANTHROPIC_API_KEY');
+    assert.equal(p.daily_send_limit, 30);
     assert.equal(p.has_apify_token, true);
     assert.ok(!JSON.stringify(res).includes('sk-ant-test'));
   });
@@ -85,6 +86,12 @@ test.describe('1. Profiles', () => {
     assert.equal(p.ai_key_env, 'OPENAI_API_KEY');
   });
 
+  test(`${++seq}. PUT /:id sets the daily send limit within 1-500`, async () => {
+    assert.equal((await call(`${base}/1`, {method: 'PUT', body: {daily_send_limit: 70}})).data.profile.daily_send_limit, 70);
+    assert.equal((await call(`${base}/1`, {method: 'PUT', body: {daily_send_limit: 0}})).code, 'input_invalid');
+    assert.equal((await call(`${base}/1`, {method: 'PUT', body: {daily_send_limit: 501}})).code, 'input_invalid');
+  });
+
   test(`${++seq}. PUT /:id saves a subject template`, async () => {
     let res = await call(`${base}/1`, {method: 'PUT', body: {subject_template: 'hello {company}'}});
     assert.equal(res.data.profile.subject_template, 'hello {company}');
@@ -94,7 +101,11 @@ test.describe('1. Profiles', () => {
     let res = await call(base.replace('/profiles', '/settings'));
     assert.equal(res.code, 'success');
     assert.equal(res.data.settings.database, 'pglite');
-    assert.deepEqual(res.data.settings.keys, {DATABASE_URL: true, ANTHROPIC_API_KEY: true, OPENAI_API_KEY: false, GEMINI_API_KEY: false, APIFY_TOKEN: true});
+    assert.deepEqual(res.data.settings.keys, {DATABASE_URL: true, ANTHROPIC_API_KEY: true, OPENAI_API_KEY: false, GEMINI_API_KEY: false, APIFY_TOKEN: true, GMAIL_USER: false, GMAIL_APP_PASSWORD: false});
+    assert.equal(res.data.settings.mail.configured, true);
+    assert.equal(res.data.settings.mail.sent_today, 0);
+    assert.equal(res.data.settings.mail.queued, 0);
+    assert.equal(res.data.settings.mail.daily_limit, 70);
     assert.ok(!JSON.stringify(res).includes('sk-ant-test'));
   });
 

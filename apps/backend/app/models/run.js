@@ -1,6 +1,6 @@
 'use strict';
 
-const {and, desc, eq, inArray, sql} = require('drizzle-orm');
+const {and, desc, eq, inArray, isNull, sql} = require('drizzle-orm');
 
 const utilsService = require('app/services/utils');
 
@@ -65,6 +65,7 @@ async function updateRun(params) {
   let _update = {updated_at: new Date()};
   params.status ? (_update.status = params.status) : null;
   params.companyLimit ? (_update.company_limit = params.companyLimit) : null;
+  params.hasOwnProperty('sendPaused') ? (_update.send_paused = params.sendPaused) : null;
   params.hasOwnProperty('error') ? (_update.error = params.error) : null;
   params.hasOwnProperty('startedAt') ? (_update.started_at = params.startedAt ? new Date(params.startedAt) : null) : null;
   params.hasOwnProperty('finishedAt') ? (_update.finished_at = params.finishedAt ? new Date(params.finishedAt) : null) : null;
@@ -89,6 +90,7 @@ function _select() {
       id: runs.id,
       profile_id: runs.profile_id,
       profile_name: profiles.name,
+      daily_send_limit: profiles.daily_send_limit,
       batch: runs.batch,
       source: runs.source,
       status: runs.status,
@@ -101,6 +103,7 @@ function _select() {
       system_prompt: runs.system_prompt,
       resume_markdown: runs.resume_markdown,
       error: runs.error,
+      send_paused: runs.send_paused,
       started_at: runs.started_at,
       finished_at: runs.finished_at,
       created_at: runs.created_at,
@@ -112,7 +115,7 @@ function _select() {
 
 async function _getStats(runIds) {
   if (!runIds.length) {
-    return {companies: [], drafts: []};
+    return {companies: [], drafts: [], send: [], ready: []};
   }
 
   let companyRows = await database
@@ -126,10 +129,25 @@ async function _getStats(runIds) {
     .db()
     .select({run_id: drafts.run_id, status: drafts.status, sent: drafts.sent, count: sql`count(*)::int`})
     .from(drafts)
-    .where(inArray(drafts.run_id, runIds))
+    .where(and(inArray(drafts.run_id, runIds), isNull(drafts.parent_id)))
     .groupBy(drafts.run_id, drafts.status, drafts.sent);
 
-  return {companies: companyRows, drafts: draftRows};
+  let sendRows = await database
+    .db()
+    .select({run_id: drafts.run_id, send_status: drafts.send_status, count: sql`count(*)::int`})
+    .from(drafts)
+    .where(inArray(drafts.run_id, runIds))
+    .groupBy(drafts.run_id, drafts.send_status);
+
+  // What "Send all" would pick up, by where the address came from
+  let readyRows = await database
+    .db()
+    .select({run_id: drafts.run_id, email_kind: drafts.email_kind, count: sql`count(*)::int`})
+    .from(drafts)
+    .where(and(inArray(drafts.run_id, runIds), isNull(drafts.parent_id), eq(drafts.status, 'generated'), eq(drafts.sent, false), inArray(drafts.send_status, ['unsent', 'failed']), sql`${drafts.to_email} <> ''`))
+    .groupBy(drafts.run_id, drafts.email_kind);
+
+  return {companies: companyRows, drafts: draftRows, send: sendRows, ready: readyRows};
 }
 
 function _collate(rows, stats) {
@@ -145,7 +163,12 @@ function _collate(rows, stats) {
         s.sent ? (d.sent += s.count) : null;
       });
 
-    return {...run, stats: {companies: c, drafts: d}};
+    let send = {unsent: 0, queued: 0, sending: 0, sent: 0, failed: 0};
+    let ready = {};
+    stats.send.filter((x) => x.run_id === run.id).forEach((x) => (send[x.send_status] += x.count));
+    stats.ready.filter((x) => x.run_id === run.id).forEach((x) => (ready[x.email_kind] = x.count));
+
+    return {...run, stats: {companies: c, drafts: d, send, ready}};
   });
 }
 

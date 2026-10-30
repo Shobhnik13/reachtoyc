@@ -1,0 +1,1 @@
+ALTER TABLE "profiles" ADD COLUMN "daily_send_limit" integer DEFAULT 30 NOT NULL;

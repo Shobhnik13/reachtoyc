@@ -352,3 +352,30 @@ main.page.wide { max-width: 1080px; padding-top: 0; }
 .step-line.done .step-icon { background: var(--ok); border-color: var(--ok); color: var(--card); animation: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
 .step-line.now .step-icon { border-color: var(--fg); }
 @keyframes pop { 0% { transform: scale(0.6); } 100% { transform: scale(1); } }
+
+/* Sending: solid green Send, queue bar and Send all review box */
+button.send { background: var(--ok); border-color: var(--ok); color: var(--card); }
+button.send:hover, button.send.on { filter: brightness(1.08); border-color: var(--ok); box-shadow: var(--shadow-lg); }
+.badge.sending { color: var(--info); }
+.badge.sending::before { animation: pulse 1.4s ease-in-out infinite; }
+.sendbox { margin-top: 14px; padding: 14px; border: 1px dashed color-mix(in srgb, var(--ok) 50%, var(--line)); border-radius: 12px; background: color-mix(in srgb, var(--ok) 5%, var(--card)); animation: unfold 0.2s ease both; }
+.sendbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card-2); font-size: 14px; }
+.sendbar b { font-variant-numeric: tabular-nums; }
+
+/* Top-bar send meter */
+.meter { display: inline-flex; flex-direction: column; gap: 4px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); font-size: 12.5px; color: var(--fg); text-decoration: none; min-width: 150px; }
+.meter b { font-variant-numeric: tabular-nums; }
+.meter-sub { color: var(--muted); }
+.meter-bar { height: 4px; border-radius: 99px; background: var(--card-2); overflow: hidden; }
+.meter-bar > span { display: block; height: 100%; background: var(--ok); border-radius: 99px; transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+.meter.low .meter-bar > span { background: var(--warn); }
+.meter.done { border-color: color-mix(in srgb, var(--err) 45%, var(--line)); }
+.meter.done .meter-bar > span { background: var(--err); }
+.meter.done .meter-sub { color: var(--err); }
+.meter.off { color: var(--muted); min-width: 0; }
+.meter.off:hover { color: var(--fg); }
+@media (max-width: 640px) { .meter-sub { display: none; } .meter { min-width: 0; } }
+.preview-send { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--card); font-size: 13.5px; }
+.preview-send p { margin: 0 0 6px; overflow-wrap: anywhere; }
+.preview-send .muted:first-child { display: inline-block; width: 60px; }
+button.ghost.on { color: var(--fg); background: var(--card-2); }

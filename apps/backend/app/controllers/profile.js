@@ -50,6 +50,7 @@ function _buildParams(body) {
   body.hasOwnProperty('apify_max_usd') ? (params.apifyMaxUsd = parseFloat(body.apify_max_usd)) : null;
   body.hasOwnProperty('resume_markdown') ? (params.resumeMarkdown = String(body.resume_markdown || '')) : null;
   body.system_prompt ? (params.systemPrompt = String(body.system_prompt)) : null;
+  body.hasOwnProperty('daily_send_limit') ? (params.dailySendLimit = parseInt(body.daily_send_limit)) : null;
   body.hasOwnProperty('subject_template') ? (params.subjectTemplate = String(body.subject_template || '').trim().slice(0, 300)) : null;
   return params;
 }

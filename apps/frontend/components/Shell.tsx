@@ -6,6 +6,7 @@ import {useEffect, useState} from 'react';
 import {Toaster} from 'sonner';
 
 import GitHubStar from '@/components/GitHubStar';
+import SendMeter from '@/components/SendMeter';
 import StartCta from '@/components/StartCta';
 import {onLoading} from '@/lib/api';
 
@@ -62,6 +63,7 @@ export default function Shell({children}: {children: React.ReactNode}) {
             </div>
           )}
           <div className="right">
+            {landing ? null : <SendMeter />}
             <GitHubStar />
             {landing ? <StartCta setupLabel="Get started" appLabel="Your runs" /> : <Link href="/runs/new" className="btn primary">+ New run</Link>}
             <button type="button" className="icon" onClick={toggle} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} title={`${theme === 'dark' ? 'Light' : 'Dark'} mode`}>

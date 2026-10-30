@@ -83,6 +83,10 @@ function _validate(params) {
   if (params.hasOwnProperty('apifyMaxUsd') && !(params.apifyMaxUsd >= 0.1 && params.apifyMaxUsd <= 100)) {
     throw new Error('input_invalid');
   }
+
+  if (params.hasOwnProperty('dailySendLimit') && !(params.dailySendLimit >= 1 && params.dailySendLimit <= 500)) {
+    throw new Error('input_invalid');
+  }
 }
 
 async function _respond(profileId) {
